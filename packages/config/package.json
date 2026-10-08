@@ -1,0 +1,22 @@
+{
+  "name": "@chirkey/config",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Shared TS/ESLint/Prettier config for chirkey-tour monorepo",
+  "exports": {
+    "./eslint.config.mjs": "./eslint.config.mjs",
+    "./prettier.config.mjs": "./prettier.config.mjs",
+    "./tsconfig.base.json": "./tsconfig.base.json"
+  },
+  "scripts": {
+    "lint": "echo \"config: nothing to lint\"",
+    "typecheck": "echo \"config: nothing to typecheck\"",
+    "test": "echo \"config: no tests\""
+  },
+  "dependencies": {
+    "@eslint/js": "^9.9.0",
+    "eslint": "^9.9.0",
+    "typescript-eslint": "^8.48.1"
+  }
+}

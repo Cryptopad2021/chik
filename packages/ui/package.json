@@ -1,0 +1,21 @@
+{
+  "name": "@chirkey/ui",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } },
+  "scripts": {
+    "lint": "eslint src",
+    "typecheck": "tsc --noEmit",
+    "test": "echo \"no ui tests yet\""
+  },
+  "peerDependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@chirkey/config": "*",
+    "@types/react": "^18.3.5",
+    "typescript": "^5.5.4"
+  }
+}

@@ -1,0 +1,591 @@
+// CHIRKEY TOUR — Prisma schema (ТЗ §5–6, 8–14, 16, 24–25, 33, 37–38, 41, 56)
+// Enum-значения зеркалят @chirkey/types (packages/types/src/index.ts).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================ ENUMS ============================
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  MANAGER
+  CONTENT_MANAGER
+  VIEWER
+}
+
+enum TourStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum DepartureStatus {
+  OPEN
+  ALMOST_FULL
+  FULL
+  CANCELLED
+  COMPLETED
+}
+
+enum BookingStatus {
+  NEW
+  CONTACTED
+  PENDING_CONFIRMATION
+  CONFIRMED
+  PAYMENT_PENDING
+  PAID
+  CANCELLED
+  COMPLETED
+  REFUNDED
+}
+
+enum BookingSource {
+  WEBSITE
+  TELEGRAM
+  PHONE
+  MANAGER
+  OTHER
+}
+
+enum PassengerType {
+  ADULT
+  CHILD_10_TO_14
+  CHILD_UNDER_10
+}
+
+enum PaymentStatus {
+  PENDING
+  AUTHORIZED
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum TelegramPostStatus {
+  DRAFT
+  SENT
+  FAILED
+}
+
+enum NotificationChannel {
+  EMAIL
+  TELEGRAM
+  SYSTEM
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+  SKIPPED
+}
+
+// ============================ AUTH / USERS ============================
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String   // никогда не возвращается клиенту (ТЗ §39)
+  firstName    String
+  lastName     String
+  role         UserRole @default(VIEWER)
+  isActive     Boolean  @default(true)
+  // refresh token rotation (ТЗ §39): храним только ХЭШ токена
+  refreshTokenHash     String?
+  refreshTokenIssuedAt DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  deletedAt    DateTime?
+
+  auditLogs       AuditLog[]
+  uploadedFiles   File[]          @relation("UploadedBy")
+  managedBookings Booking[]       @relation("AssignedManager")
+  reviewActions   ReviewModeration[]
+
+  @@index([role])
+}
+
+// ============================ DESTINATIONS / CITIES ============================
+
+model Destination {
+  id              String    @id @default(uuid())
+  slug            String    @unique
+  name            String
+  description     String?
+  coverImageUrl   String?
+  metaTitle       String?
+  metaDescription String?
+  isDemo          Boolean   @default(false)
+  sortOrder       Int       @default(0)
+  isActive        Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+
+  tours Tour[]
+
+  @@index([isActive, sortOrder])
+}
+
+model DepartureCity {
+  id                  String    @id @default(uuid())
+  slug                String    @unique
+  name                String
+  address             String?
+  coordinates         Json? // { lat, lng }
+  meetingInstructions String?
+  isActive            Boolean   @default(true)
+  isDemo              Boolean   @default(false)
+  sortOrder           Int       @default(0)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  deletedAt           DateTime?
+
+  bookings                Booking[]                @relation("BookingDepartureCity")
+  departureCityDepartures DepartureCityOnDeparture[]
+
+  @@index([isActive, sortOrder])
+}
+
+// departures ↔ cities (М:М, ТЗ §21: «выбрать города отправления»)
+model DepartureCityOnDeparture {
+  departureId     String
+  departureCityId String
+  price           Decimal? @db.Decimal(10, 2) // надбавка/особая цена за город (§17 specialPrice)
+  notes           String?
+
+  departure     Departure     @relation(fields: [departureId], references: [id], onDelete: Cascade)
+  departureCity DepartureCity @relation(fields: [departureCityId], references: [id], onDelete: Cascade)
+
+  @@id([departureId, departureCityId])
+}
+
+// ============================ TOURS ============================
+
+model Tour {
+  id                String     @id @default(uuid())
+  slug              String     @unique // индекс уникальности — ТЗ §60
+  title             String
+  shortDescription  String
+  description       String
+  destinationId     String
+  durationDays      Int
+  durationNights    Int
+  basePrice         Decimal    @db.Decimal(10, 2)
+  currency          String     @default("RUB")
+  status            TourStatus @default(DRAFT)
+  // ценообразование (§17)
+  adultPrice        Decimal?   @db.Decimal(10, 2)
+  child10to14Price  Decimal?   @db.Decimal(10, 2)
+  childUnder10Price Decimal?   @db.Decimal(10, 2)
+  includedText      String?
+  notIncludedText   String?
+  // SEO (§30)
+  metaTitle         String?
+  metaDescription   String?
+  isDemo            Boolean    @default(false)
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  deletedAt         DateTime? // soft delete (§8)
+
+  destination     Destination  @relation(fields: [destinationId], references: [id])
+  days            TourDay[]
+  images          TourImage[]
+  departures      Departure[]
+  reviews         Review[]
+  telegramPosts   TelegramPost[]
+
+  @@index([status, deletedAt])
+  @@index([destinationId])
+}
+
+model TourDay {
+  id          String  @id @default(uuid())
+  tourId      String
+  dayNumber   Int
+  title       String
+  description String
+  meals       String?
+  overnight   Boolean @default(false)
+  sortOrder   Int     @default(0)
+
+  tour Tour @relation(fields: [tourId], references: [id], onDelete: Cascade)
+
+  @@unique([tourId, dayNumber])
+  @@index([tourId, sortOrder])
+}
+
+model TourImage {
+  id        String   @id @default(uuid())
+  tourId    String
+  url       String // object storage (ТЗ §10), не бинарники в PostgreSQL
+  alt       String // доступность (§44)
+  title     String?
+  sortOrder Int      @default(0)
+  isCover   Boolean  @default(false)
+  fileId    String?
+  createdAt DateTime @default(now())
+
+  tour Tour  @relation(fields: [tourId], references: [id], onDelete: Cascade)
+  file File? @relation(fields: [fileId], references: [id])
+
+  @@index([tourId, sortOrder])
+}
+
+// ============================ DEPARTURES ============================
+
+model Departure {
+  id          String          @id @default(uuid())
+  tourId      String
+  startDate   DateTime        @db.Timestamptz(3) // индекс — ТЗ §60
+  endDate     DateTime        @db.Timestamptz(3)
+  totalSeats  Int
+  // bookedSeats — источник истины для остатка мест; availableSeats вычисляется.
+  // Обновляется атомарно внутри транзакции бронирования (ТЗ §12, §54).
+  bookedSeats Int             @default(0)
+  status      DepartureStatus @default(OPEN)
+  price       Decimal         @db.Decimal(10, 2)
+  notes       String?
+  isDemo      Boolean         @default(false)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  tour          Tour                       @relation(fields: [tourId], references: [id])
+  bookings      Booking[]
+  cities        DepartureCityOnDeparture[]
+  telegramPosts TelegramPost[]
+
+  @@index([tourId, startDate])
+  @@index([startDate])
+  @@index([status])
+}
+
+// ============================ CUSTOMERS / BOOKINGS ============================
+
+model Customer {
+  id               String   @id @default(uuid())
+  firstName        String
+  lastName         String
+  middleName       String?
+  phone            String // индекс — ТЗ §60
+  email            String?
+  telegramUsername String? // индекс — ТЗ §60
+  telegramUserId   BigInt?  @unique
+  note             String? // комментарий менеджера (§23)
+  isDemo           Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  deletedAt        DateTime?
+
+  bookings Booking[]
+  reviews  Review[]
+
+  @@index([phone])
+  @@index([telegramUsername])
+}
+
+model Booking {
+  id                String        @id @default(uuid())
+  bookingNumber     String        @unique // ЧТ-YYYYMMDD-XXXXX (ТЗ §60)
+  customerId        String
+  departureId       String
+  departureCityId   String
+  assignedManagerId String?
+  status            BookingStatus @default(NEW)
+  source            BookingSource @default(WEBSITE)
+  adults            Int
+  children10to14    Int
+  childrenUnder10   Int
+  totalAmount       Decimal       @db.Decimal(10, 2)
+  currency          String        @default("RUB")
+  comment           String?
+  // идемпотентность: повторная отправка формы не создаёт дубль (§68)
+  idempotencyKey String?  @unique
+  telegramChatId BigInt?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  customer        Customer               @relation(fields: [customerId], references: [id])
+  departure       Departure              @relation(fields: [departureId], references: [id])
+  departureCity   DepartureCity          @relation("BookingDepartureCity", fields: [departureCityId], references: [id])
+  assignedManager User?                  @relation("AssignedManager", fields: [assignedManagerId], references: [id])
+  passengers      BookingPassenger[]
+  payments        Payment[]
+  statusHistory   BookingStatusHistory[]
+  notifications   Notification[]
+
+  @@index([customerId])
+  @@index([departureId])
+  @@index([status])
+  @@index([assignedManagerId])
+  @@index([createdAt])
+}
+
+model BookingPassenger {
+  id            String        @id @default(uuid())
+  bookingId     String
+  firstName     String
+  lastName      String
+  middleName    String?
+  birthDate     DateTime?     @db.Date
+  passengerType PassengerType
+  phone         String?
+  comment       String?
+  // архитектура для будущих паспортных данных (§16) — на первом этапе не заполняются
+  documentInfo  Json?
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId])
+}
+
+model BookingStatusHistory {
+  id         String         @id @default(uuid())
+  bookingId  String
+  fromStatus BookingStatus?
+  toStatus   BookingStatus
+  userId     String?
+  note       String?
+  createdAt  DateTime       @default(now())
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId, createdAt])
+}
+
+// ============================ PAYMENTS (abstraction, ТЗ §37) ============================
+
+model Payment {
+  id         String        @id @default(uuid())
+  bookingId  String
+  provider   String // 'yookassa' | 'cloudpayments' | ... — без привязки к одному провайдеру
+  externalId String?
+  amount     Decimal       @db.Decimal(10, 2)
+  currency   String        @default("RUB")
+  status     PaymentStatus @default(PENDING)
+  metadata   Json?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  booking Booking @relation(fields: [bookingId], references: [id])
+
+  @@index([bookingId])
+  @@index([externalId])
+}
+
+// ============================ REVIEWS ============================
+
+model Review {
+  id         String       @id @default(uuid())
+  customerId String?
+  tourId     String
+  rating     Int // 1..5
+  text       String
+  authorName String? // если без авторизации
+  status     ReviewStatus @default(PENDING)
+  isDemo     Boolean      @default(false)
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  customer    Customer?          @relation(fields: [customerId], references: [id])
+  tour        Tour               @relation(fields: [tourId], references: [id])
+  moderations ReviewModeration[]
+
+  @@index([status, createdAt])
+  @@index([tourId, status])
+}
+
+model ReviewModeration {
+  id        String       @id @default(uuid())
+  reviewId  String
+  userId    String
+  action    ReviewStatus
+  note      String?
+  createdAt DateTime     @default(now())
+
+  review Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@index([reviewId])
+}
+
+// ============================ TELEGRAM (ТЗ §33–34) ============================
+
+model TelegramPost {
+  id                String             @id @default(uuid())
+  tourId            String?
+  departureId       String?
+  text              String
+  photoUrl          String?
+  telegramMessageId String?
+  status            TelegramPostStatus @default(DRAFT)
+  error             String?
+  publishedAt       DateTime?
+  createdAt         DateTime           @default(now())
+
+  tour      Tour?      @relation(fields: [tourId], references: [id])
+  departure Departure? @relation(fields: [departureId], references: [id])
+
+  @@index([status, createdAt])
+}
+
+// ============================ NOTIFICATIONS (ТЗ §35) ============================
+
+model Notification {
+  id        String              @id @default(uuid())
+  event     String // booking.created и т.д.
+  channel   NotificationChannel
+  status    NotificationStatus  @default(PENDING)
+  target    String? // email/chatId/userId получателя
+  payload   Json
+  error     String?
+  sentAt    DateTime?
+  createdAt DateTime            @default(now())
+
+  bookingId String?
+  booking   Booking? @relation(fields: [bookingId], references: [id])
+
+  @@index([event, status])
+  @@index([status, createdAt])
+}
+
+// ============================ PROMO CODES (ТЗ §5, §17) ============================
+
+model PromoCode {
+  id              String    @id @default(uuid())
+  code            String    @unique
+  description     String?
+  discountPercent Int?
+  discountAmount  Decimal?  @db.Decimal(10, 2)
+  maxUses         Int?
+  usedCount       Int       @default(0)
+  validFrom       DateTime?
+  validUntil      DateTime?
+  isActive        Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([isActive])
+}
+
+// ============================ MEDIA / FILES (ТЗ §41) ============================
+
+model File {
+  id         String   @id @default(uuid())
+  filename   String
+  mimeType   String
+  size       Int // bytes
+  width      Int?
+  height     Int?
+  url        String // S3-compatible storage
+  alt        String?
+  key        String   @unique // object key в бакете
+  uploadedBy String?
+  createdAt  DateTime @default(now())
+
+  uploader   User?       @relation("UploadedBy", fields: [uploadedBy], references: [id])
+  tourImages TourImage[]
+
+  @@index([createdAt])
+  @@index([mimeType])
+}
+
+// ============================ AUDIT LOG (ТЗ §38) ============================
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  action    String // e.g. BOOKING_STATUS_CHANGED
+  entity    String // e.g. Booking
+  entityId  String?
+  metadata  Json? // {"from":"NEW","to":"CONFIRMED"}
+  ip        String?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([entity, entityId])
+  @@index([userId, createdAt])
+  @@index([createdAt])
+}
+
+// ============================ SITE SETTINGS (ТЗ §56–57) ============================
+
+model SiteSettings {
+  id          String   @id @default("singleton")
+  companyName String   @default("ЧиркейТур")
+  phone       String?
+  email       String?
+  telegramUrl String?
+  telegramBotUrl String?
+  address     String?
+  socialLinks Json? // { vk, instagram, youtube }
+  logoUrl     String?
+  faviconUrl  String?
+  seoDefaultTitle       String?
+  seoDefaultDescription String?
+  // hero / контент главной (§57)
+  heroTitle       String?
+  heroDescription String?
+  advantages      Json? // [{title, text, icon}]
+  howItWorks      Json? // шаги «как проходит поездка»
+  footerText      String?
+  // booking settings (§56)
+  bookingEnabled     Boolean @default(true)
+  autoConfirmEnabled Boolean @default(false)
+  // notification settings
+  notifyNewBookingTelegram Boolean @default(true)
+  managerTelegramChatIds   Json? // [chatId,...]
+  // telegram settings
+  telegramChannelId        String?
+  telegramPostTemplate     String?
+  featureFlags             Json? // {"notifications.enabled": false, ...} (§55)
+  updatedAt                DateTime @updatedAt
+}
+
+// ============================ FAQ (ТЗ §25) ============================
+
+model Faq {
+  id          String   @id @default(uuid())
+  question    String
+  answer      String
+  category    String   @default("general")
+  sortOrder   Int      @default(0)
+  isPublished Boolean  @default(true)
+  isDemo      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([isPublished, category, sortOrder])
+}
+
+// ============================ CONTACT REQUESTS (ТЗ §5) ============================
+
+model ContactRequest {
+  id               String        @id @default(uuid())
+  name             String
+  phone            String
+  email            String?
+  telegramUsername String?
+  message          String?
+  source           BookingSource @default(WEBSITE)
+  status           String        @default("NEW") // NEW | IN_PROGRESS | DONE
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  @@index([status, createdAt])
+  @@index([phone])
+}

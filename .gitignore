@@ -1,0 +1,6 @@
+(empty).env
+.turbo/
+.next/
+*.tsbuildinfo
+chirkey-*.bundle
+.env
