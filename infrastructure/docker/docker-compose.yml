@@ -1,0 +1,22 @@
+# ЧиркейТур — локальная инфраструктура разработки.
+# Совпадает с .env.example: DATABASE_URL=postgresql://chirkey:chirkey@localhost:5432/chirkey_tour
+# Запуск PostgreSQL:  docker compose -f infrastructure/docker/docker-compose.yml up -d postgres
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: chirkey-postgres
+    environment:
+      POSTGRES_USER: chirkey
+      POSTGRES_PASSWORD: chirkey
+      POSTGRES_DB: chirkey_tour
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chirkey -d chirkey_tour"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+volumes:
+  pgdata:

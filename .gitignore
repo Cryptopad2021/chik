@@ -1,6 +1,16 @@
-.env
-.turbo/
+# Dependencies
+node_modules/
+# Build artifacts
 .next/
+.turbo/
+dist/
 *.tsbuildinfo
-chirkey-*.bundle
+# Secrets — never commit
 .env
+.env.local
+.env.*.local
+# Misc
+*.log
+.DS_Store
+*.bundle
+chirkey-tour.tar.gz
