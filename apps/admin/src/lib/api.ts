@@ -152,6 +152,104 @@ export const apiPost = <T>(path: string, body?: unknown) =>
 export const apiPatch = <T>(path: string, body: unknown) =>
   request<T>(path, { method: 'PATCH', body });
 
+/** POST multipart (загрузка файла в медиа-библиотеку). */
+async function postFormData<T>(
+  path: string,
+  form: FormData,
+): Promise<ApiResult<T>> {
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}/api/${path}`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { accept: 'application/json', ...authHeaders() },
+      body: form,
+      signal: AbortSignal.timeout(60000),
+    });
+  } catch {
+    return {
+      ok: false,
+      status: 0,
+      error: { code: 'NETWORK_ERROR', message: 'Нет связи с сервером.' },
+    };
+  }
+  if (res.status === 401 && (await tryRefresh())) {
+    return postFormData<T>(path, form);
+  }
+  if (res.ok) {
+    const json = await res.json().catch(() => null);
+    const data =
+      json && typeof json === 'object' && 'data' in json
+        ? (json as { data: T }).data
+        : (json as T);
+    return { ok: true, status: res.status, data };
+  }
+  return { ok: false, status: res.status, error: await parseError(res) };
+}
+
+/* ===== Media API (Phase 5, ТЗ §41) ===== */
+
+export interface MediaFile {
+  id: string;
+  filename: string;
+  url: string;
+  mimeType: string;
+  size: number;
+  width: number | null;
+  height: number | null;
+}
+
+export async function uploadMedia(file: File): Promise<ApiResult<MediaFile>> {
+  const form = new FormData();
+  form.append('file', file);
+  return postFormData<MediaFile>('media/upload', form);
+}
+
+/* ===== Destinations / Hero-карусель (главная, Phase 5+) ===== */
+
+export interface DestinationRow {
+  id: string;
+  name: string;
+  slug: string;
+  isActive: boolean;
+  _count?: { tours: number };
+  heroSlideImageUrl?: string | null;
+  heroSlideTitle?: string | null;
+  heroSlideText?: string | null;
+  showInHero?: boolean;
+  heroSortOrder?: number;
+}
+
+export interface HeroSettings {
+  title: string;
+  text: string;
+  imageUrl: string | null;
+  showInHero: boolean;
+  heroSortOrder: number;
+  tourSlug: string | null; // клик слайда ведёт на этот тур (первый опубликованный)
+}
+
+export async function fetchDestinations(): Promise<ApiResult<DestinationRow[]>> {
+  return apiGet<DestinationRow[]>('destinations');
+}
+
+export async function fetchHeroSettings(id: string): Promise<ApiResult<HeroSettings>> {
+  return apiGet<HeroSettings>(`destinations/${id}/hero`);
+}
+
+export async function updateHeroSettings(
+  id: string,
+  patch: Partial<{
+    title: string | null;
+    text: string | null;
+    imageUrl: string | null;
+    showInHero: boolean;
+    heroSortOrder: number;
+  }>,
+): Promise<ApiResult<{ id: string }>> {
+  return apiPatch<{ id: string }>(`destinations/${id}/hero`, patch);
+}
+
 /* ===== Auth API (Phase 4) ===== */
 
 export async function login(

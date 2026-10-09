@@ -3,7 +3,7 @@ import { Prisma, DepartureStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { uniqueSlug } from '../../common/slug';
 import { AppException } from '../../common/app-exception';
-import { CreateTourDto, UpdateTourDto, ListToursQuery } from './dto';
+import { CreateTourDto, UpdateTourDto, ListToursQuery, TourDayDto, TourImageDto } from './dto';
 
 @Injectable()
 export class ToursService {
@@ -206,6 +206,65 @@ export class ToursService {
   async archive(id: string) {
     await this.getOr404(id);
     return this.db.tour.update({ where: { id }, data: { deletedAt: new Date(), status: 'ARCHIVED' } });
+  }
+
+  /**
+   * Программа тура (§9): replace-семантика — целиком заменяем дни одним запросом.
+   * dayNumber уникален в рамках тура (@@unique([tourId, dayNumber]) в схеме),
+   * поэтому дубликаты отсекаем до записи.
+   */
+  async replaceDays(tourId: string, days: TourDayDto[]) {
+    await this.getOr404(tourId);
+    const numbers = days.map((d) => d.dayNumber);
+    if (new Set(numbers).size !== numbers.length) {
+      throw AppException.validation('Дублирующиеся dayNumber в программе тура');
+    }
+    await this.$transaction([
+      this.db.tourDay.deleteMany({ where: { tourId } }),
+      this.db.tourDay.createMany({
+        data: days.map((d, i) => ({
+          tourId,
+          dayNumber: d.dayNumber,
+          title: d.title,
+          description: d.description,
+          meals: d.meals ?? null,
+          overnight: d.overnight ?? false,
+          sortOrder: d.sortOrder ?? i + 1,
+        })),
+      }),
+    ]);
+    return this.db.tourDay.findMany({ where: { tourId }, orderBy: { sortOrder: 'asc' } });
+  }
+
+  /**
+   * Галерея тура (§10): replace-семантика. Ровно одна обложка — первая с isCover,
+   * если ни одна не отмечена, cover становится первый элемент списка.
+   */
+  async replaceImages(tourId: string, images: TourImageDto[]) {
+    await this.getOr404(tourId);
+    const rows = images.map((img, i) => ({
+      tourId,
+      url: img.url,
+      alt: img.alt,
+      title: img.title ?? null,
+      fileId: img.fileId ?? null,
+      sortOrder: img.sortOrder ?? i + 1,
+      isCover: false,
+    }));
+    let coverIdx = rows.findIndex((_r, i) => images[i].isCover === true);
+    if (coverIdx < 0 && rows.length > 0) coverIdx = 0;
+    if (coverIdx >= 0) rows[coverIdx].isCover = true;
+
+    await this.$transaction([
+      this.db.tourImage.deleteMany({ where: { tourId } }),
+      ...(rows.length ? [this.db.tourImage.createMany({ data: rows })] : []),
+    ]);
+    return this.db.tourImage.findMany({ where: { tourId }, orderBy: { sortOrder: 'asc' } });
+  }
+
+  private $transaction<T>(ops: Promise<T>[]): Promise<T[]> {
+    // PrismaService проксирует транзакции; при недоступной БД db-геттер уже бросает 503
+    return this.db.$transaction(ops as never) as Promise<T[]>;
   }
 
   private async getOr404(id: string) {

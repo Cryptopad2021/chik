@@ -5,6 +5,9 @@ import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
 import rateLimit from "express-rate-limit";
+import express from "express";
+import fsSync from "fs";
+import path from "path";
 import { AppModule } from "./app.module";
 import { AllExceptionsFilter } from "./common/all-exceptions.filter";
 
@@ -54,6 +57,25 @@ async function bootstrap() {
     }),
   );
   app.useGlobalFilters(new AllExceptionsFilter());
+
+  // Статическая раздача загруженных медиа (local-бэкенд StorageService, ТЗ §41).
+  // express.static нормализует путь и не отдаёт файлы за пределами корня — защита от path traversal.
+  const mediaRoot = process.env.MEDIA_ROOT;
+  if (mediaRoot) {
+    const absRoot = path.resolve(mediaRoot);
+    fsSync.mkdirSync(absRoot, { recursive: true });
+    const http = app.getHttpAdapter().getInstance();
+    http.use(
+      "/media",
+      express.static(absRoot, {
+        index: false,
+        dotfiles: "ignore",
+        maxAge: "30d",
+        immutable: true,
+      }),
+    );
+    new Logger("Bootstrap").log(`Медиа раздаются из ${absRoot} по /media/*`);
+  }
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle("ЧиркейТур API")

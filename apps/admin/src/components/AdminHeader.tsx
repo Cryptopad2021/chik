@@ -25,8 +25,15 @@ export function AdminHeader() {
   }
 
   return (
-    <header className="flex items-center justify-between border-b border-neutral-200 bg-white px-6 py-3">
-      <span className="font-semibold">ЧиркейТур — Админ</span>
+    <header className="flex items-center justify-between gap-4 border-b border-neutral-200 bg-white px-6 py-3">
+      <div className="flex items-center gap-6">
+        <span className="font-semibold">ЧиркейТур — Админ</span>
+        {/* Мини-навигация разделов (полная — PHASE 9) */}
+        <nav className="hidden gap-4 text-sm text-neutral-700 md:flex" aria-label="Разделы">
+          <a className="hover:underline" href="/dashboard">Дашборд</a>
+          <a className="hover:underline" href="/hero">Карусель главной</a>
+        </nav>
+      </div>
       {user && (
         <div className="flex items-center gap-4 text-sm">
           <span className="text-neutral-700">

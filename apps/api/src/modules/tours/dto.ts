@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsArray, IsBoolean, IsEnum, IsInt, IsNumber, IsOptional, IsString, MaxLength, Min, ValidateNested } from 'class-validator';
+import { IsArray, IsBoolean, IsEnum, IsInt, IsNumber, IsOptional, IsString, IsUrl, MaxLength, Min, ValidateNested } from 'class-validator';
 
 export const TOUR_STATUSES = { DRAFT: 'DRAFT', PUBLISHED: 'PUBLISHED', ARCHIVED: 'ARCHIVED' } as const;
 export type TourStatusValue = (typeof TOUR_STATUSES)[keyof typeof TOUR_STATUSES];
@@ -12,6 +12,34 @@ export class TourDayDto {
   @ApiProperty({ required: false }) @IsString() @IsOptional() meals?: string;
   @ApiProperty({ required: false }) @IsBoolean() @IsOptional() overnight?: boolean;
   @ApiProperty({ required: false }) @IsInt() @IsOptional() sortOrder?: number;
+}
+
+/** Программа тура целиком при create/update — перестановка replace (ТЗ §9). */
+export class ReplaceTourDaysDto {
+  @ApiProperty({ type: [TourDayDto] })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => TourDayDto)
+  days!: TourDayDto[];
+}
+
+export class TourImageDto {
+  @ApiProperty() @IsUrl({ require_tld: false }) url!: string;
+  /** alt обязателен для доступности (ТЗ §44) */
+  @ApiProperty() @IsString() @MaxLength(300) alt!: string;
+  @ApiProperty({ required: false }) @IsString() @IsOptional() @MaxLength(300) title?: string;
+  @ApiProperty({ required: false }) @IsInt() @IsOptional() sortOrder?: number;
+  @ApiProperty({ required: false }) @IsBoolean() @IsOptional() isCover?: boolean;
+  /** ссылка на запись Media Library (File.id), если загружали через /api/media */
+  @ApiProperty({ required: false }) @IsString() @IsOptional() fileId?: string;
+}
+
+export class ReplaceTourImagesDto {
+  @ApiProperty({ type: [TourImageDto] })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => TourImageDto)
+  images!: TourImageDto[];
 }
 
 export class CreateTourDto {

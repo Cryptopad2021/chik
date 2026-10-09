@@ -3,17 +3,18 @@ import { ru } from '@/content/ru';
 import { apiGet, type TourSummary, type DestinationInfo, type ReviewInfo, type FaqInfo, type SiteSettingsInfo } from '../lib/api';
 import { TourCard } from '../components/TourCard';
 import { ReviewCard } from '../components/ReviewCard';
-import { formatPrice, formatDate } from '../lib/format';
+import { HeroCarousel, type HeroSlideData } from '../components/HeroCarousel';
 
 interface ListResponse<T> { items: T[]; total: number }
 
 export default async function HomePage() {
-  const [toursRes, destinations, reviews, faq, settings] = await Promise.all([
+  const [toursRes, destinations, reviews, faq, settings, heroSlides] = await Promise.all([
     apiGet<ListResponse<TourSummary>>('tours?perPage=6&sort=newest', 60),
     apiGet<ListResponse<DestinationInfo>>('destinations', 300).then((r) => r?.items ?? []),
     apiGet<ListResponse<ReviewInfo>>('reviews', 120).then((r) => r?.items ?? []),
     apiGet<ListResponse<FaqInfo>>('faq', 300).then((r) => r?.items ?? []),
     apiGet<SiteSettingsInfo>('settings/public', 300),
+    apiGet<HeroSlideData[]>('destinations/hero', 300).then((r) => r ?? []),
   ]);
   const tours = toursRes?.items ?? [];
   const destList = destinations;
@@ -22,6 +23,9 @@ export default async function HomePage() {
 
   return (
     <>
+      {/* Карусель сразу под верхним меню — слайды управляются из админки (§48) */}
+      {heroSlides.length > 0 ? <HeroCarousel slides={heroSlides} /> : null}
+
       {/* Hero */}
       <section className="relative overflow-hidden bg-gradient-to-br from-emerald-950 via-emerald-900 to-stone-800 text-white">
         <div className="mx-auto max-w-7xl px-4 py-24 sm:px-6 sm:py-32">

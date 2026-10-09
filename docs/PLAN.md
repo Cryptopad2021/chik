@@ -104,16 +104,17 @@ compose-файл валиден (`docker compose config` — если досту
 
 ## PHASE 5 — TOURS (backend → frontend)
 
-- [ ] 5.1 Slug-service: транслитерация RU→URL («Тур в Дагестан на 3 дня» → tur-v-dagestan-na-3-dnya), уникальность с суффиксами (§63)
-- [ ] 5.2 Tours CRUD (§8, §47): GET /tours (пагинация, фильтры destination/city/date/duration/price/q, sort), GET /tours/:slug (published), POST/PATCH/DELETE(soft archive/trash) — RBAC
-- [ ] 5.3 TourDay program CRUD (dayNumber, meals, overnight, sortOrder) (§9)
-- [ ] 5.4 TourImage CRUD (url из storage, alt, isCover, sortOrder) (§10)
-- [ ] 5.5 Destinations CRUD (§11) + DepartureCities CRUD (§13, редактируемо из админа)
-- [ ] 5.6 SEO поля тура (metaTitle/metaDescription) + JSON-LD позже (Phase 13)
-- [ ] 5.7 Pricing fields adultPrice/child10to14Price/childUnder10Price на Departure/Tour — цена только с backend (§17)
-- [ ] 5.8 Media Library backend: upload→S3-compatible (presigned/POST), File metadata (filename, mimeType, size, width, height, url, alt, uploadedBy) (§41)
-- [ ] 5.9 Тесты: slug unit, tour CRUD integration, RBAC guards; lint/typecheck/test ✅
-- [ ] 5.10 Commit «feat(phase5): tours module + slug + media»
+- [x] 5.1 Slug-service: транслитерация RU→URL («Тур в Дагестан на 3 дня» → tur-v-dagestan-na-3-dnya), уникальность с суффиксами (§63) — common/slug.ts + slug.spec.ts
+- [x] 5.2 Tours CRUD (§8, §47): GET /tours (пагинация, фильтры destination/city/date/duration/price/q, sort), GET /tours/:slug (published), POST/PATCH/DELETE(soft archive/trash) — RBAC + аудит
+- [x] 5.3 TourDay program CRUD (dayNumber, meals, overnight, sortOrder) (§9) — PUT /tours/:id/days (replace-семантика, проверка дублей dayNumber, транзакция)
+- [x] 5.4 TourImage CRUD (url из storage, alt, isCover, sortOrder) (§10) — PUT /tours/:id/images (ровно одна обложка: первая isCover или первый элемент)
+- [x] 5.5 Destinations CRUD (§11) + DepartureCities CRUD (§13, редактируемо из админа) — мягкое удаление isActive+deletedAt, DELETE эндпоинты
+- [x] 5.6 SEO поля тура (metaTitle/metaDescription в DTO/schema) + JSON-LD позже (Phase 13)
+- [x] 5.7 Pricing fields adultPrice/child10to14Price/childUnder10Price на Departure/Tour — цена только с backend (§17) (в схеме и DTO ранее; фронтовы цены берутся из API)
+- [x] 5.8 Media Library backend: modules/media (StorageService local/S3, image-probe sniff+размеры, upload ≤10МБ → File metadata filename/mimeType/size/width/height/url/alt/uploadedBy + аудит, registerExternal для presigned); статика /media/* в main.ts с защитой от path traversal; env: STORAGE_DRIVER/MEDIA_ROOT/MEDIA_PUBLIC_URL/S3_* (§41)
+- [x] 5.9 Hero-карусель главной (заказ пользователя): поля Destination showInHero/heroSortOrder/heroSlide{ImageUrl,Title,Text} (+миграция, индекс), GET /destinations/hero (публичный, fallback фото/текст из тура), GET|PATCH /destinations/:id/hero (админ), UI админки apps/admin /hero, компонент web HeroCarousel (автопрокрутка, стрелки, свайп, клик → тур)
+- [x] 5.10 Тесты: slug unit, tours service unit (replace days/images, cover-правило, 404), media/storage unit, RBAC spec; lint/typecheck/test ✅ (unit вместо integration — PostgreSQL недоступен в dev)
+- [ ] 5.11 Commit «feat(phase5): tours module + slug + media + hero carousel»
 
 ---
 

@@ -6,12 +6,19 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   Query,
   UseGuards,
 } from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import { ToursService } from "./tours.service";
-import { CreateTourDto, UpdateTourDto, ListToursQuery } from "./dto";
+import {
+  CreateTourDto,
+  UpdateTourDto,
+  ListToursQuery,
+  ReplaceTourDaysDto,
+  ReplaceTourImagesDto,
+} from "./dto";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { PermissionsGuard } from "../../common/guards/permissions.guard";
 import { RequirePermissions } from "../../common/decorators/permissions.decorator";
@@ -96,5 +103,45 @@ export class ToursController {
       entityId: id,
     });
     return { success: true, data: { id: tour.id, archived: true } };
+  }
+
+  @Put(":id/days")
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions(PERMISSIONS.TOUR_WRITE)
+  @ApiOperation({ summary: "Заменить программу тура целиком (§9, tour:write)" })
+  async replaceDays(
+    @Param("id") id: string,
+    @Body() dto: ReplaceTourDaysDto,
+    @CurrentUser() user: AuthUser,
+  ) {
+    const days = await this.tours.replaceDays(id, dto.days);
+    await this.audit.log({
+      userId: user.id,
+      action: "TOUR_DAYS_REPLACED",
+      entity: "Tour",
+      entityId: id,
+      metadata: { count: days.length },
+    });
+    return { success: true, data: days };
+  }
+
+  @Put(":id/images")
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions(PERMISSIONS.TOUR_WRITE)
+  @ApiOperation({ summary: "Заменить галерею тура целиком (§10, tour:write)" })
+  async replaceImages(
+    @Param("id") id: string,
+    @Body() dto: ReplaceTourImagesDto,
+    @CurrentUser() user: AuthUser,
+  ) {
+    const images = await this.tours.replaceImages(id, dto.images);
+    await this.audit.log({
+      userId: user.id,
+      action: "TOUR_IMAGES_REPLACED",
+      entity: "Tour",
+      entityId: id,
+      metadata: { count: images.length },
+    });
+    return { success: true, data: images };
   }
 }

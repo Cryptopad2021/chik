@@ -61,6 +61,11 @@ CREATE TABLE "Destination" (
     "isDemo" BOOLEAN NOT NULL DEFAULT false,
     "sortOrder" INTEGER NOT NULL DEFAULT 0,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "heroSlideImageUrl" TEXT,
+    "heroSlideTitle" TEXT,
+    "heroSlideText" TEXT,
+    "showInHero" BOOLEAN NOT NULL DEFAULT false,
+    "heroSortOrder" INTEGER NOT NULL DEFAULT 0,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "deletedAt" TIMESTAMP(3),
@@ -441,6 +446,9 @@ CREATE UNIQUE INDEX "Destination_slug_key" ON "Destination"("slug");
 
 -- CreateIndex
 CREATE INDEX "Destination_isActive_sortOrder_idx" ON "Destination"("isActive", "sortOrder");
+
+-- CreateIndex
+CREATE INDEX "Destination_showInHero_heroSortOrder_idx" ON "Destination"("showInHero", "heroSortOrder");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "DepartureCity_slug_key" ON "DepartureCity"("slug");

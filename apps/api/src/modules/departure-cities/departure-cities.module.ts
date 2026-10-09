@@ -1,18 +1,20 @@
 import {
+  Body,
   Controller,
+  Delete,
   Get,
   Injectable,
   Module,
   NotFoundException,
-  Body,
   Param,
-  Post,
   Patch,
+  Post,
+  Query,
   UseGuards,
 } from "@nestjs/common";
 import { AuthModule } from '../auth/auth.module';
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
-import { IsNumber, IsOptional, IsString, MaxLength } from "class-validator";
+import { IsBoolean, IsNumber, IsOptional, IsString, MaxLength } from "class-validator";
 import { PrismaService } from "../../prisma/prisma.service";
 import { slugify, ensureUniqueSlug } from "../../common/slug";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
@@ -26,6 +28,7 @@ class UpsertCityDto {
   @IsNumber() @IsOptional() lat?: number;
   @IsNumber() @IsOptional() lng?: number;
   @IsString() @IsOptional() @MaxLength(2000) meetingInstructions?: string;
+  @IsBoolean() @IsOptional() isActive?: boolean;
 }
 
 @Injectable()
@@ -70,12 +73,21 @@ export class DepartureCitiesService {
         name: dto.name,
         address: dto.address ?? undefined,
         meetingInstructions: dto.meetingInstructions ?? undefined,
+        isActive: dto.isActive ?? undefined,
         coordinates:
           dto.lat != null && dto.lng != null
             ? { lat: dto.lat, lng: dto.lng }
             : undefined,
       },
     });
+  }
+
+  /** Деактивация вместо физического удаления — выезды ссылаются на город (§13). */
+  async deactivate(id: string) {
+    const c = await this.prisma.departureCity.findUnique({ where: { id } });
+    if (!c)
+      throw new NotFoundException({ code: "CITY_NOT_FOUND", message: "Город не найден" });
+    return this.prisma.departureCity.update({ where: { id }, data: { isActive: false } });
   }
 }
 
@@ -87,9 +99,9 @@ export class DepartureCitiesController {
     private readonly jwt: JwtAuthGuard,
   ) {}
   @Get()
-  @ApiOperation({ summary: "Города отправления" })
-  async list() {
-    return { success: true, data: await this.svc.list(true) };
+  @ApiOperation({ summary: "Города отправления (публично — активные; all=true — все, для админа)" })
+  async list(@Query("all") all?: string) {
+    return { success: true, data: await this.svc.list(all !== "true") };
   }
   @Post()
   @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -102,6 +114,15 @@ export class DepartureCitiesController {
   @RequirePermissions(PERMISSIONS.DEPARTURE_WRITE)
   async update(@Param("id") id: string, @Body() dto: UpsertCityDto) {
     return { success: true, data: await this.svc.update(id, dto) };
+  }
+
+  @Delete(":id")
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions(PERMISSIONS.DEPARTURE_WRITE)
+  @ApiOperation({ summary: "Деактивировать город (§13, departure:write)" })
+  async deactivate(@Param("id") id: string) {
+    const c = await this.svc.deactivate(id);
+    return { success: true, data: { id: c.id, isActive: c.isActive } };
   }
 }
 

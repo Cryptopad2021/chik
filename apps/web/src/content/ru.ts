@@ -36,6 +36,10 @@ export const ru = {
     faqTitle: 'Частые вопросы',
     ctaBlock: 'Готовы поехать?',
     ctaBlockText: 'Выберите тур и дату — менеджер свяжется с вами для подтверждения.',
+    carouselPrev: 'Предыдущий слайд',
+    carouselNext: 'Следующий слайд',
+    carouselDots: 'Переключение слайдов карусели',
+    carouselMore: 'Смотреть тур',
   },
   tour: {
     program: 'Программа по дням',

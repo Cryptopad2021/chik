@@ -13,6 +13,7 @@ import { UsersModule } from "./modules/users/users.module";
 import { SettingsModule } from "./modules/settings/settings.module";
 import { ContactRequestsModule } from "./modules/contact-requests/contact-requests.module";
 import { FaqModule } from "./modules/faq/faq.module";
+import { MediaModule } from "./modules/media/media.module";
 import { NotificationsModule } from "./modules/notifications/notifications.module";
 import { HealthController } from "./modules/health/health.controller";
 
@@ -34,6 +35,7 @@ import { HealthController } from "./modules/health/health.controller";
     UsersModule,
     SettingsModule,
     FaqModule,
+    MediaModule,
     ContactRequestsModule,
     NotificationsModule,
   ],

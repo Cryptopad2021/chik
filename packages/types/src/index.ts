@@ -90,6 +90,12 @@ export const ERROR_CODES = [
   'INTERNAL_ERROR',
   // доменные:
   'TOUR_NOT_FOUND',
+  'DESTINATION_NOT_FOUND',
+  'CITY_NOT_FOUND',
+  'FILE_NOT_FOUND',
+  'INVALID_IMAGE',
+  'FILE_TOO_LARGE',
+  'STORAGE_UNAVAILABLE',
   'DEPARTURE_NOT_FOUND',
   'BOOKING_NOT_FOUND',
   'CUSTOMER_NOT_FOUND',
@@ -123,4 +129,14 @@ export interface Paginated<T> {
   total: number;
   page: number;
   pageSize: number;
+}
+
+/** Слайд hero-карусели на главной (управляется из админки через направление). */
+export interface HeroSlide {
+  destinationId: string;
+  slug: string;            // slug направления — клик ведёт на /destinations/[slug]
+  tourSlug: string | null; // главный тур слайда — клик ведёт на /tours/[tourSlug]
+  title: string;           // heroSlideTitle ?? name
+  text: string;            // heroSlideText ?? shortDescription первого тура
+  imageUrl: string | null; // heroSlideImageUrl ?? coverImageUrl ?? обложка тура
 }
