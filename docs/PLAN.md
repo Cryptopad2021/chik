@@ -114,7 +114,7 @@ compose-файл валиден (`docker compose config` — если досту
 - [x] 5.8 Media Library backend: modules/media (StorageService local/S3, image-probe sniff+размеры, upload ≤10МБ → File metadata filename/mimeType/size/width/height/url/alt/uploadedBy + аудит, registerExternal для presigned); статика /media/* в main.ts с защитой от path traversal; env: STORAGE_DRIVER/MEDIA_ROOT/MEDIA_PUBLIC_URL/S3_* (§41)
 - [x] 5.9 Hero-карусель главной (заказ пользователя): поля Destination showInHero/heroSortOrder/heroSlide{ImageUrl,Title,Text} (+миграция, индекс), GET /destinations/hero (публичный, fallback фото/текст из тура), GET|PATCH /destinations/:id/hero (админ), UI админки apps/admin /hero, компонент web HeroCarousel (автопрокрутка, стрелки, свайп, клик → тур)
 - [x] 5.10 Тесты: slug unit, tours service unit (replace days/images, cover-правило, 404), media/storage unit, RBAC spec; lint/typecheck/test ✅ (unit вместо integration — PostgreSQL недоступен в dev)
-- [ ] 5.11 Commit «feat(phase5): tours module + slug + media + hero carousel»
+- [x] 5.11 Commit «feat(phase5): tours module + slug + media + hero carousel»
 
 ---
 
