@@ -47,6 +47,7 @@ export const ru = {
     reviews: 'Отзывы',
     dayLabel: (n: number) => `День ${n}`,
     noDates: 'Даты скоро появятся — напишите нам в Telegram.',
+    full: 'Мест нет',
     bookNow: 'Забронировать',
   },
   catalog: {

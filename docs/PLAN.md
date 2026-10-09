@@ -98,6 +98,7 @@ compose-файл валиден (`docker compose config` — если досту
 - [x] 4.7 Тесты: login happy/fail, refresh rotation, guard 401/403, RBAC матрица (§53)
 - [x] 4.8 lint/typecheck/test ✅ → Commit «feat(phase4): auth + rbac»
 - [x] 4.9 Admin UI авторизация: форма login (+remember me §40), API-клиент (access в памяти, refresh httpOnly-cookie, single-flight rotation), AuthGuard, восстановление сессии, logout, шапка с ролью; unit-тесты клиента
+- [x] 4.10 HTTP e2e-прогон контракта auth на реальном Nest-стеке (login/me/refresh-ротация/reuse-детект/logout/аудит) без БД; фикс vitest для Nest-декораторов (unplugin-swc + emitDecoratorMetadata) → Commit «test(phase4): auth HTTP contract e2e»
 
 ---
 
