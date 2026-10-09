@@ -3,6 +3,7 @@ import {
   Body,
   ConflictException,
   Controller,
+  Delete,
   Get,
   Injectable,
   Module,
@@ -23,10 +24,12 @@ import { RequirePermissions } from '../../common/decorators/permissions.decorato
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { PERMISSIONS } from '../../common/constants';
 import { AuditService } from '../audit/audit.service';
+import { DeparturesCapacityService } from './departures-capacity.service';
 import {
   CreateDepartureDto,
   DEPARTURE_STATUSES,
   ListDeparturesQuery,
+  RecalculateSeatsQuery,
   UpdateDepartureDto,
 } from './dto';
 
@@ -40,6 +43,7 @@ export class DeparturesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly capacity: DeparturesCapacityService,
   ) {}
 
   private get db() {
@@ -195,14 +199,60 @@ export class DeparturesService {
     return this.decorate(updated);
   }
 
-  /** Закрытие продаж (§21): OPEN → CANCELLED без потерь мест. */
-  async closeSales(id: string, userId: string) {
+  /** Закрытие продаж (§21): OPEN → CANCELLED без потерь мест. С активными бронями — только с confirm=true. */
+  async closeSales(id: string, userId: string, allowOverride = false) {
     const d = await this.db.departure.findUnique({ where: { id } });
     if (!d) throw new AppException('DEPARTURE_NOT_FOUND', 'Выезд не найден', 404);
     if (d.status === 'COMPLETED') throw new ConflictException('Завершённый выезд нельзя закрыть');
+    const guard = await this.capacity.assertNoActiveBookings(id, allowOverride);
+    if (guard.blocked) {
+      await this.audit.log({ userId, action: 'DEPARTURE_SALES_CLOSED_OVERRIDE', entity: 'Departure', entityId: id, metadata: { activeBookings: guard.activeCount } });
+    }
     const updated = await this.db.departure.update({ where: { id }, data: { status: 'CANCELLED' } });
-    await this.audit.log({ userId, action: 'DEPARTURE_SALES_CLOSED', entity: 'Departure', entityId: id, metadata: { from: d.status } });
+    await this.audit.log({ userId, action: 'DEPARTURE_SALES_CLOSED', entity: 'Departure', entityId: id, metadata: { from: d.status, confirmed: guard.blocked } });
     return updated;
+  }
+
+  /**
+   * Удаление выезда (§6.3). Если есть активные брони — блокируем без confirm=true;
+   * при confirm=true сначала отменяем активные заявки (с освобождением мест и записью
+   * в историю), затем удаляем выезд вместе с историческими (CANCELLED/COMPLETED) заявками.
+   */
+  async remove(id: string, userId: string, allowOverride = false) {
+    const d = await this.db.departure.findUnique({ where: { id } });
+    if (!d) throw new AppException('DEPARTURE_NOT_FOUND', 'Выезд не найден', 404);
+    const guard = await this.capacity.assertNoActiveBookings(id, allowOverride);
+    // FK Booking.departureId без cascade — при удалении сами снимаем ссылки/удаляем заявки.
+    if (guard.blocked && allowOverride) {
+      await this.prisma.$transaction(async (tx) => {
+        const active = await tx.booking.findMany({ where: { departureId: id, status: { notIn: ['CANCELLED', 'REFUNDED'] } }, select: { id: true } });
+        for (const b of active) {
+          await tx.booking.update({ where: { id: b.id }, data: { status: 'CANCELLED' } });
+          await tx.bookingStatusHistory.create({ data: { bookingId: b.id, toStatus: 'CANCELLED', note: 'Отменено из-за удаления выезда' } });
+        }
+        // Освобождаем места на выезде до удаления строки (чтобы UPDATE не упал на отсутствующей записи)
+        if (active.length) {
+          await tx.$executeRaw`UPDATE "Departure" SET "bookedSeats" = 0 WHERE id = ${id}::uuid`;
+        }
+      });
+    }
+    // Удаляем связанные записи (история статусов каскадно через onDelete:Cascade у BookingStatusHistory)
+    await this.db.$transaction(async (tx) => {
+      await tx.booking.deleteMany({ where: { departureId: id } });
+      await tx.departureCityOnDeparture.deleteMany({ where: { departureId: id } });
+      await tx.departure.delete({ where: { id } });
+    });
+    await this.audit.log({ userId, action: 'DEPARTURE_DELETED', entity: 'Departure', entityId: id, metadata: { tourId: d.tourId, startDate: d.startDate.toISOString(), hadActiveBookings: guard.blocked } });
+    return { deleted: true };
+  }
+
+  /** POST /departures/:id/recalculate-seats — ручной пересчёт bookedSeats/availableSeats + авто-статус (§6.2). */
+  async recalculateSeats(id: string, userId: string, allowOverride = false) {
+    const d = await this.db.departure.findUnique({ where: { id } });
+    if (!d) throw new AppException('DEPARTURE_NOT_FOUND', 'Выезд не найден', 404);
+    // Пересчёт всегда безопасен (мы просто сверяем факт), поэтому override не требуется.
+    void allowOverride;
+    return this.capacity.recalculate(id, { userId, reason: 'manual_endpoint' });
   }
 
   private async assertCitiesExist(ids: string[]) {
@@ -251,15 +301,31 @@ export class DeparturesController {
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermissions(PERMISSIONS.DEPARTURE_WRITE)
   @ApiOperation({ summary: 'Закрыть продажи выезда' })
-  async close(@Param('id') id: string, @CurrentUser('sub') userId: string) {
-    return { success: true, data: await this.svc.closeSales(id, userId) };
+  async close(@Param('id') id: string, @CurrentUser('sub') userId: string, @Query() q: RecalculateSeatsQuery) {
+    return { success: true, data: await this.svc.closeSales(id, userId, q.confirm === 'true') };
+  }
+
+  @Post(':id/recalculate-seats')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions(PERMISSIONS.DEPARTURE_WRITE)
+  @ApiOperation({ summary: 'Атомарный пересчёт мест (bookedSeats/availableSeats + авто-статус)' })
+  async recalc(@Param('id') id: string, @CurrentUser('sub') userId: string, @Query() q: RecalculateSeatsQuery) {
+    return { success: true, data: await this.svc.recalculateSeats(id, userId, q.confirm === 'true') };
+  }
+
+  @Delete(':id')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions(PERMISSIONS.DEPARTURE_WRITE)
+  @ApiOperation({ summary: 'Удалить выезд (с активными бронями — только ?confirm=true)' })
+  async remove(@Param('id') id: string, @CurrentUser('sub') userId: string, @Query() q: RecalculateSeatsQuery) {
+    return { success: true, data: await this.svc.remove(id, userId, q.confirm === 'true') };
   }
 }
 
 @Module({
   imports: [AuthModule],
   controllers: [DeparturesController],
-  providers: [DeparturesService],
-  exports: [DeparturesService],
+  providers: [DeparturesService, DeparturesCapacityService],
+  exports: [DeparturesService, DeparturesCapacityService],
 })
 export class DeparturesModule {}

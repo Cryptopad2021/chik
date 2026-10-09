@@ -1,14 +1,27 @@
 # Dependencies
 node_modules/
-# Build artifacts
-.next/
-.turbo/
+
+# Builds & caches
 dist/
+.next/
+out/
+.turbo/
 *.tsbuildinfo
-# Secrets — never commit
+coverage/
+.vite/
+apps/api/media/
+
+# Environment & secrets
 .env
-.env.local
-.env.*.local
-# Misc
-*.log
+.env.*
+!.env.example
+
+# OS / editor
 .DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Logs
+*.log
+npm-debug.log*

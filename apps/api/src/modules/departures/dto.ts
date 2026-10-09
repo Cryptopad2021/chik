@@ -80,3 +80,11 @@ export class ListDeparturesQuery {
   @IsOptional()
   upcomingOnly?: 'true' | 'false';
 }
+
+/** POST /departures/:id/recalculate-seats — query-параметры подтверждения (§6.3). */
+export class RecalculateSeatsQuery {
+  @ApiProperty({ required: false, default: 'false' })
+  @IsEnum({ true: 'true', false: 'false' })
+  @IsOptional()
+  confirm?: 'true' | 'false';
+}

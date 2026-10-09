@@ -120,12 +120,12 @@ compose-файл валиден (`docker compose config` — если досту
 
 ## PHASE 6 — DEPARTURES (+ transaction safety)
 
-- [ ] 6.1 Departures CRUD (§12): startDate/endDate/totalSeats/price/status/notes/cities
-- [ ] 6.2 availableSeats = totalSeats − сумма активных броней; пересчёт атомарно; статус ALMOST_FULL/FULL авто
-- [ ] 6.3 Нельзя удалить/изменить выезд с активными бронями без процедуры (audit + confirmation)
-- [ ] 6.4 Транзакции PostgreSQL + row locking (`SELECT ... FOR UPDATE`) на изменение seats (§54)
-- [ ] 6.5 Integration test: конкурентное уменьшение мест (2 параллельных → один успех)
-- [ ] 6.6 lint/typecheck/test ✅ → Commit «feat(phase6): departures + capacity»
+- [x] 6.1 Departures CRUD (§12): startDate/endDate/totalSeats/price/status/notes/cities — GET list (фильтры tourId/citySlug/status/dateFrom/dateTo/upcomingOnly), GET :id, POST/PATCH/DELETE c RBAC departure:write, публичные read-эндпоинты; price в Decimal → Number; вычисляемые availableSeats/fillPercent
+- [x] 6.2 availableSeats = totalSeats − сумма активных броней; пересчёт атомарно; статус ALMOST_FULL/FULL авто — POST /departures/:id/recalculate-seats (DeparturesCapacityService.recalculate): агрегат по не-CANCELLED/не-REFUNDED заявкам, порог ALMOST_FULL ≤15% остатка, CANCELLED/COMPLETED не трогаются
+- [x] 6.3 Нельзя удалить/изменить выезд с активными бронями без процедуры (audit + confirmation) — DELETE/закрытие продаж блокируются ConflictException DEPARTURE_HAS_ACTIVE_BOOKINGS без ?confirm=true; при confirm сначала отмена активных заявок с историей + обнуление bookedSeats + аудит DEPARTURE_DELETED/_SALES_CLOSED_OVERRIDE; запрет переноса дат в прошлое при активных бронях; нельзя уменьшить totalSeats ниже bookedSeats (SEATS_BELOW_BOOKED)
+- [x] 6.4 Транзакции PostgreSQL + row locking (`SELECT ... FOR UPDATE`) на изменение seats (§54) — recalculate выполняется внутри $transaction c $queryRaw ... FOR UPDATE (строка выезда сериализует параллельные пересчёты); unit-тесты фиксируют обязательность FOR UPDATE и исполнения внутри транзакции
+- [x] 6.5 Integration test: конкурентное уменьшение мест (2 параллельных → один успех) — scripts/concurrent-seats-test.mjs (реальный PG+API: 2 параллельных POST /api/bookings по 2 места на выезд из 2 → ровно один 2xx, второй SEATS_INSUFFICIENT, bookedSeats==2); юнит-слой: departures-capacity.spec.ts (10 тестов). Прогон против живой БД — в CI/Docker (в dev нет PostgreSQL)
+- [x] 6.6 lint/typecheck/test ✅ → Commit «feat(phase6): departures + capacity»
 
 ---
 
