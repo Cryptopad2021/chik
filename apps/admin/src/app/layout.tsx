@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import './globals.css';
+import { AuthProvider } from '@/lib/auth-context';
 
 export const metadata: Metadata = {
   title: 'ЧиркейТур — Админ-панель',
@@ -10,7 +11,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="ru">
-      <body>{children}</body>
+      <body>
+        {/* AuthProvider живёт весь жизненный цикл SPA-навигации (PHASE 4) */}
+        <AuthProvider>{children}</AuthProvider>
+      </body>
     </html>
   );
 }

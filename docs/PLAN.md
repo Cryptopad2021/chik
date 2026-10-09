@@ -97,6 +97,7 @@ compose-файл валиден (`docker compose config` — если досту
 - [x] 4.6 AuditLog записи на login/logout/role change (§38)
 - [x] 4.7 Тесты: login happy/fail, refresh rotation, guard 401/403, RBAC матрица (§53)
 - [x] 4.8 lint/typecheck/test ✅ → Commit «feat(phase4): auth + rbac»
+- [x] 4.9 Admin UI авторизация: форма login (+remember me §40), API-клиент (access в памяти, refresh httpOnly-cookie, single-flight rotation), AuthGuard, восстановление сессии, logout, шапка с ролью; unit-тесты клиента
 
 ---
 

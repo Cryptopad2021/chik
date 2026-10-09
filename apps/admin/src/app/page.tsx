@@ -1,6 +1,6 @@
-// Полноценный дашборд строится в PHASE 9 (ТЗ §19). Каркас Phase 1: редирект на /login.
+// PHASE 4: после входа открываем дашборд; сам дашборд (§19) строится в PHASE 9.
 import { redirect } from 'next/navigation';
 
 export default function AdminIndex() {
-  redirect('/login');
+  redirect('/dashboard');
 }

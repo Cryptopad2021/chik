@@ -12,5 +12,3 @@ dist/
 # Misc
 *.log
 .DS_Store
-*.bundle
-chirkey-tour.tar.gz
