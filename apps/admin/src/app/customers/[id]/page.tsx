@@ -156,7 +156,7 @@ export default function CustomerPage() {
                         <span className="ml-2 rounded bg-neutral-100 px-2 py-0.5 text-xs font-medium">
                           {STATUS_LABELS[b.status as BookingStatusValue] ?? b.status}
                         </span>
-                        <span className="ml-2 text-xs text-neutral-400">{b.source === 'TELEGRAM' ? 'Telegram' : 'Сайт'}</span>
+                        <span className="ml-2 text-xs text-neutral-400">{b.source === 'TELEGRAM' || b.source === 'TG_BOT' ? 'Telegram' : 'Сайт'}</span>
                       </div>
                       <div className="text-sm font-semibold">{money(b.totalAmount)} {b.currency}</div>
                     </div>

@@ -45,7 +45,7 @@ export const BOOKING_STATUSES = [
 export type BookingStatus = (typeof BOOKING_STATUSES)[number];
 
 // ---------- Источники брони (ТЗ §14) ----------
-export const BOOKING_SOURCES = ['WEBSITE', 'TELEGRAM', 'PHONE', 'MANAGER', 'OTHER'] as const;
+export const BOOKING_SOURCES = ['WEBSITE', 'TELEGRAM', 'TG_BOT', 'PHONE', 'MANAGER', 'OTHER'] as const;
 export type BookingSource = (typeof BOOKING_SOURCES)[number];
 
 // ---------- Тип пассажира (ТЗ §16, ценообразование §17) ----------

@@ -128,7 +128,7 @@ export async function bookingsCreateViaCore(
               // город обязателен FK; если бот его не собрал — берём первый город выезда
               departureCityId: p.departureCityId || departure.cities[0]?.departureCityId || '',
               status: 'NEW',
-              source: BookingSource.TELEGRAM,
+              source: BookingSource.TG_BOT,
               telegramChatId: BigInt(p.chatId),
               adults: seatsNeeded,
               children10to14: 0,

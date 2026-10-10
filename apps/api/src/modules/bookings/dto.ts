@@ -3,7 +3,7 @@ import { Type } from 'class-transformer';
 import { IsArray, IsEnum, IsInt, IsOptional, IsString, Matches, MaxLength, Min, ValidateNested } from 'class-validator';
 
 export const PASSENGER_TYPES = { ADULT: 'ADULT', CHILD_10_TO_14: 'CHILD_10_TO_14', CHILD_UNDER_10: 'CHILD_UNDER_10' } as const;
-export const BOOKING_SOURCES = { WEBSITE: 'WEBSITE', TELEGRAM: 'TELEGRAM', PHONE: 'PHONE', MANAGER: 'MANAGER', OTHER: 'OTHER' } as const;
+export const BOOKING_SOURCES = { WEBSITE: 'WEBSITE', TELEGRAM: 'TELEGRAM', TG_BOT: 'TG_BOT', PHONE: 'PHONE', MANAGER: 'MANAGER', OTHER: 'OTHER' } as const;
 export const BOOKING_TARGET_STATUSES = {
   CONTACTED: 'CONTACTED',
   PENDING_CONFIRMATION: 'PENDING_CONFIRMATION',

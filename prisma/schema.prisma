@@ -49,6 +49,7 @@ enum BookingStatus {
 enum BookingSource {
   WEBSITE
   TELEGRAM
+  TG_BOT // заявка создана в Telegram-боте (§32) — отличается от клика с сайта на TG (§71)
   PHONE
   MANAGER
   OTHER
@@ -599,4 +600,28 @@ model ContactRequest {
 
   @@index([status, createdAt])
   @@index([phone])
+}
+
+// ============================ ANALYTICS (ТЗ §71–73) ============================
+
+/// События продуктовой аналитики. Только агрегаты и идентификаторы объектов —
+/// без персональных данных (§72). utm_* — маркетинговая атрибуция источника.
+model AnalyticsEvent {
+  id         String   @id @default(uuid())
+  type       String // view_tour | select_departure | start_booking | booking_created | booking_confirmed | telegram_click | phone_click | review_submitted
+  tourId     String?
+  departureId String?
+  bookingId  String?
+  sessionId  String? // анонимный id сессии браузера (не ПДн)
+  source     String? // WEBSITE | TELEGRAM | TG_BOT | ...
+  utmSource  String?
+  utmMedium  String?
+  utmCampaign String?
+  path       String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([type, createdAt])
+  @@index([tourId, createdAt])
+  @@index([utmSource, createdAt])
 }
