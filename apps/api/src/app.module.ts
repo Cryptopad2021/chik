@@ -15,6 +15,7 @@ import { ContactRequestsModule } from "./modules/contact-requests/contact-reques
 import { FaqModule } from "./modules/faq/faq.module";
 import { MediaModule } from "./modules/media/media.module";
 import { NotificationsModule } from "./modules/notifications/notifications.module";
+import { TelegramModule } from "./modules/telegram/telegram.module";
 import { AdminStatsModule } from "./modules/admin-stats/admin-stats.module";
 import { HealthController } from "./modules/health/health.controller";
 
@@ -39,6 +40,7 @@ import { HealthController } from "./modules/health/health.controller";
     MediaModule,
     ContactRequestsModule,
     NotificationsModule,
+    TelegramModule,
     AdminStatsModule,
   ],
   controllers: [HealthController],

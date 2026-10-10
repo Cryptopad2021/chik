@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import type { Request, Response } from 'express';
@@ -8,6 +9,8 @@ export interface AccessTokenPayload {
   email: string;
   role: string;
   type: 'access';
+  /** Уникальный id токена: гарантирует, что access-токены в пределах одной секунды не идентичны */
+  jti?: string;
 }
 export interface RefreshTokenPayload {
   sub: string;
@@ -34,8 +37,13 @@ export class TokensService {
     };
   }
 
-  async signAccess(payload: Omit<AccessTokenPayload, 'type'>): Promise<string> {
-    return this.jwt.signAsync({ ...payload, type: 'access' }, { secret: this.secrets.access, expiresIn: '15m' });
+  async signAccess(payload: Omit<AccessTokenPayload, 'type' | 'jti'>): Promise<string> {
+    // jti нужен, чтобы два токена, выданные в одну секунду (login → сразу refresh),
+    // не совпадали строка-в-строку (одинаковые payload + iat/exp → одинаковая подпись).
+    return this.jwt.signAsync(
+      { ...payload, type: 'access', jti: randomUUID() },
+      { secret: this.secrets.access, expiresIn: '15m' },
+    );
   }
 
   async signRefresh(payload: Omit<RefreshTokenPayload, 'type'>): Promise<string> {
