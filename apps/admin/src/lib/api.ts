@@ -197,6 +197,8 @@ export interface MediaFile {
   size: number;
   width: number | null;
   height: number | null;
+  alt?: string | null;
+  createdAt?: string;
 }
 
 export async function uploadMedia(file: File): Promise<ApiResult<MediaFile>> {
@@ -205,11 +207,371 @@ export async function uploadMedia(file: File): Promise<ApiResult<MediaFile>> {
   return postFormData<MediaFile>('media/upload', form);
 }
 
+export async function fetchMediaLibrary(page = 1, perPage = 24): Promise<ApiResult<{ items: MediaFile[]; total: number }>> {
+  return apiGet<{ items: MediaFile[]; total: number }>(`media?page=${page}&perPage=${perPage}`);
+}
+
+export async function setMediaAlt(id: string, alt: string | null): Promise<ApiResult<MediaFile>> {
+  return apiPatch<MediaFile>(`media/${id}/alt`, { alt });
+}
+
+export async function deleteMedia(id: string): Promise<ApiResult<unknown>> {
+  return apiDelete<unknown>(`media/${id}`);
+}
+
+/* ===== FAQ API (PHASE 9.8) ===== */
+
+export interface FaqRow {
+  id: string;
+  question: string;
+  answer: string;
+  category?: string | null;
+  sortOrder: number;
+  isPublished: boolean;
+}
+
+export async function fetchFaqAll(): Promise<ApiResult<FaqRow[]>> {
+  return apiGet<FaqRow[]>('faq/admin/all');
+}
+
+export async function deleteFaq(id: string): Promise<ApiResult<unknown>> {
+  return apiDelete<unknown>(`faq/${id}`);
+}
+
+export async function createFaq(body: { question: string; answer: string; category?: string; sortOrder?: number; isPublished?: boolean }): Promise<ApiResult<FaqRow>> {
+  return apiPost<FaqRow>('faq', body);
+}
+
+export async function updateFaq(id: string, body: Partial<{ question: string; answer: string; category: string; sortOrder: number; isPublished: boolean }>): Promise<ApiResult<FaqRow>> {
+  return apiPatch<FaqRow>(`faq/${id}`, body);
+}
+
+/* ===== Reviews API (модерация, PHASE 9.8) ===== */
+
+export type ReviewStatusValue = 'PENDING' | 'APPROVED' | 'REJECTED';
+
+export interface ReviewRow {
+  id: string;
+  rating: number;
+  text: string;
+  authorName: string;
+  status: ReviewStatusValue;
+  createdAt: string;
+  tour?: { title: string } | null;
+}
+
+export async function fetchReviewsAdmin(status?: ReviewStatusValue): Promise<ApiResult<ReviewRow[]>> {
+  const qs = status ? `?status=${status}` : '';
+  return apiGet<ReviewRow[]>(`reviews/admin/all${qs}`);
+}
+
+export async function moderateReview(id: string, status: 'APPROVED' | 'REJECTED', note?: string): Promise<ApiResult<ReviewRow>> {
+  return apiPatch<ReviewRow>(`reviews/${id}/moderate`, { status, note });
+}
+
+/* ===== Tours API (PHASE 9.4, ТЗ §20) ===== */
+
+export type TourStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+
+export interface TourRow {
+  id: string;
+  slug: string;
+  title: string;
+  shortDescription: string;
+  description?: string;
+  destinationId: string;
+  destination?: { id: string; name: string; slug: string };
+  durationDays: number;
+  durationNights: number;
+  basePrice: number;
+  currency: string;
+  status: TourStatus;
+  adultPrice?: number | null;
+  child10to14Price?: number | null;
+  childUnder10Price?: number | null;
+  includedText?: string | null;
+  notIncludedText?: string | null;
+  metaTitle?: string | null;
+  metaDescription?: string | null;
+  days?: { id?: string; dayNumber: number; title: string; description: string; meals?: string | null; overnight?: boolean }[];
+  images?: { id?: string; url: string; alt: string; sortOrder?: number; isCover?: boolean }[];
+  departures?: { id: string; startDate: string; endDate: string; totalSeats: number; bookedSeats: number; status: string }[];
+  _count?: { departures: number; reviews: number };
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface ListResult<T> {
+  items: T[];
+  total: number;
+  page: number;
+  perPage: number;
+  totalPages: number;
+}
+
+export async function fetchTours(params: { status?: TourStatus | ''; search?: string; page?: number; perPage?: number } = {}): Promise<ApiResult<ListResult<TourRow>>> {
+  const qs = new URLSearchParams();
+  if (params.status) qs.set('status', params.status);
+  if (params.search) qs.set('search', params.search);
+  if (params.page) qs.set('page', String(params.page));
+  if (params.perPage) qs.set('perPage', String(params.perPage));
+  const suffix = qs.toString() ? `?${qs.toString()}` : '';
+  return apiGet<ListResult<TourRow>>(`tours${suffix}`);
+}
+
+/** Полные данные тура для редактирования — по slug (GET /tours/:slug). */
+export async function fetchTour(slugOrId: string): Promise<ApiResult<TourRow>> {
+  return apiGet<TourRow>(`tours/${slugOrId}`);
+}
+
+export async function createTour(body: Record<string, unknown>): Promise<ApiResult<TourRow>> {
+  return apiPost<TourRow>('tours', body);
+}
+
+export async function updateTour(id: string, body: Record<string, unknown>): Promise<ApiResult<TourRow>> {
+  return apiPatch<TourRow>(`tours/${id}`, body);
+}
+
+export async function archiveTour(id: string): Promise<ApiResult<{ id: string; archived: boolean }>> {
+  return apiDelete<{ id: string; archived: boolean }>(`tours/${id}`);
+}
+
+export async function replaceTourDays(id: string, days: TourRow['days']): Promise<ApiResult<unknown>> {
+  return apiPut(`tours/${id}/days`, { days });
+}
+
+export async function replaceTourImages(id: string, images: TourRow['images']): Promise<ApiResult<unknown>> {
+  return apiPut(`tours/${id}/images`, { images });
+}
+
+/* ===== Departures API (PHASE 9.5, ТЗ §21) ===== */
+
+export interface DepartureRow {
+  id: string;
+  tourId: string;
+  tour?: { id: string; slug: string; title: string };
+  startDate: string;
+  endDate: string;
+  totalSeats: number;
+  bookedSeats: number;
+  availableSeats: number;
+  fillPercent: number;
+  status: 'OPEN' | 'ALMOST_FULL' | 'FULL' | 'CANCELLED' | 'COMPLETED';
+  price: number;
+  notes?: string | null;
+  cities?: { departureCity?: { id: string; name: string; slug: string }; price?: number | null; notes?: string | null }[];
+}
+
+export async function fetchDepartures(params: { tourId?: string; status?: string } = {}): Promise<ApiResult<DepartureRow[]>> {
+  const qs = new URLSearchParams();
+  if (params.tourId) qs.set('tourId', params.tourId);
+  if (params.status) qs.set('status', params.status);
+  const suffix = qs.toString() ? `?${qs.toString()}` : '';
+  return apiGet<DepartureRow[]>(`departures${suffix}`);
+}
+
+export async function createDeparture(body: Record<string, unknown>): Promise<ApiResult<DepartureRow>> {
+  return apiPost<DepartureRow>('departures', body);
+}
+
+export async function updateDeparture(id: string, body: Record<string, unknown>): Promise<ApiResult<DepartureRow>> {
+  return apiPatch<DepartureRow>(`departures/${id}`, body);
+}
+
+export async function closeDepartureSales(id: string, confirm = false): Promise<ApiResult<DepartureRow>> {
+  return apiPatch<DepartureRow>(`departures/${id}/close-sales${confirm ? '?confirm=true' : ''}`, {});
+}
+
+export async function deleteDeparture(id: string, confirm = false): Promise<ApiResult<{ deleted: boolean }>> {
+  return apiDelete<{ deleted: boolean }>(`departures/${id}${confirm ? '?confirm=true' : ''}`);
+}
+
+export async function recalculateDepartureSeats(id: string): Promise<ApiResult<DepartureRow & { recalculated?: boolean }>> {
+  return apiPost<DepartureRow & { recalculated?: boolean }>(`departures/${id}/recalculate-seats`);
+}
+
+/* ===== Bookings API (PHASE 9.6, ТЗ §22) ===== */
+
+export type BookingStatusValue =
+  | 'NEW' | 'CONTACTED' | 'PENDING_CONFIRMATION' | 'CONFIRMED'
+  | 'PAYMENT_PENDING' | 'PAID' | 'CANCELLED' | 'COMPLETED' | 'REFUNDED';
+
+export interface BookingRow {
+  id: string;
+  bookingNumber: string;
+  status: BookingStatusValue;
+  adults: number;
+  children10to14: number;
+  childrenUnder10: number;
+  totalAmount: number | string;
+  currency: string;
+  comment?: string | null;
+  createdAt: string;
+  customer?: { id: string; firstName: string; lastName: string; phone: string; email?: string | null };
+  departure?: { id: string; startDate: string; tour?: { id: string; title: string; slug: string } | null };
+  assignedManager?: { id: string; firstName: string; lastName: string } | null;
+}
+
+export async function fetchBookings(params: { status?: string; search?: string; page?: number; perPage?: number } = {}): Promise<ApiResult<ListResult<BookingRow>>> {
+  const qs = new URLSearchParams();
+  if (params.status) qs.set('status', params.status);
+  if (params.search) qs.set('search', params.search);
+  if (params.page) qs.set('page', String(params.page));
+  if (params.perPage) qs.set('perPage', String(params.perPage));
+  const suffix = qs.toString() ? `?${qs.toString()}` : '';
+  return apiGet<ListResult<BookingRow>>(`bookings${suffix}`);
+}
+
+export async function setBookingStatus(id: string, status: BookingStatusValue, note?: string): Promise<ApiResult<BookingRow>> {
+  return apiPatch<BookingRow>(`bookings/${id}/status`, { status, note });
+}
+
+export async function addBookingComment(id: string, text: string): Promise<ApiResult<BookingRow>> {
+  return apiPatch<BookingRow>(`bookings/${id}/comment`, { text });
+}
+
+/* ===== Destinations / Cities API (PHASE 9 CRUD) ===== */
+
+export async function createDestination(body: Record<string, unknown>): Promise<ApiResult<{ id: string }>> {
+  return apiPost<{ id: string }>('destinations', body);
+}
+
+export async function updateDestination(id: string, body: Record<string, unknown>): Promise<ApiResult<{ id: string }>> {
+  return apiPatch<{ id: string }>(`destinations/${id}`, body);
+}
+
+export async function deleteDestination(id: string): Promise<ApiResult<unknown>> {
+  return apiDelete<unknown>(`destinations/${id}`);
+}
+
+export interface CityRow {
+  id: string;
+  slug: string;
+  name: string;
+  address?: string | null;
+  meetingInstructions?: string | null;
+  isActive: boolean;
+  sortOrder?: number;
+}
+
+export async function fetchCities(all?: 'all'): Promise<ApiResult<CityRow[]>> {
+  return apiGet<CityRow[]>(`departure-cities${all === 'all' ? '?all=true' : ''}`);
+}
+
+export async function createCity(body: Record<string, unknown>): Promise<ApiResult<CityRow>> {
+  return apiPost<CityRow>('departure-cities', body);
+}
+
+export async function updateCity(id: string, body: Record<string, unknown>): Promise<ApiResult<CityRow>> {
+  return apiPatch<CityRow>(`departure-cities/${id}`, body);
+}
+
+export async function deleteCity(id: string): Promise<ApiResult<unknown>> {
+  return apiDelete<unknown>(`departure-cities/${id}`);
+}
+
+/* ===== Users API (для назначения менеджера, PHASE 9.6) ===== */
+
+export interface UserRow {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: Role;
+  isActive: boolean;
+}
+
+export async function fetchUsers(): Promise<ApiResult<UserRow[]>> {
+  return apiGet<UserRow[]>('users');
+}
+
+export async function createUser(body: { email: string; password: string; firstName: string; lastName: string; role: Role }): Promise<ApiResult<UserRow>> {
+  return apiPost<UserRow>('users', body);
+}
+
+export async function updateUser(id: string, body: Partial<{ firstName: string; lastName: string; role: Role; isActive: boolean; password: string }>): Promise<ApiResult<UserRow>> {
+  return apiPatch<UserRow>(`users/${id}`, body);
+}
+
+export async function deleteUser(id: string): Promise<ApiResult<{ id: string }>> {
+  return apiDelete<{ id: string }>(`users/${id}`);
+}
+
+/* ===== Настройки сайта (PHASE 9.9, ТЗ §56–57) ===== */
+
+export interface SiteSettingsRow {
+  id: string;
+  companyName: string;
+  phone: string | null;
+  email: string | null;
+  telegramUrl: string | null;
+  telegramBotUrl: string | null;
+  address: string | null;
+  socialLinks: unknown;
+  logoUrl: string | null;
+  faviconUrl: string | null;
+  seoDefaultTitle: string | null;
+  seoDefaultDescription: string | null;
+  heroTitle: string | null;
+  heroDescription: string | null;
+  advantages: unknown;
+  howItWorks: unknown;
+  footerText: string | null;
+  bookingEnabled: boolean;
+  autoConfirmEnabled: boolean;
+  notifyNewBookingTelegram: boolean;
+  managerTelegramChatIds: unknown;
+  telegramChannelId: string | null;
+  telegramPostTemplate: string | null;
+  featureFlags: unknown;
+  updatedAt: string;
+}
+
+export async function fetchSiteSettings(): Promise<ApiResult<SiteSettingsRow>> {
+  return apiGet<SiteSettingsRow>('settings/admin');
+}
+
+export async function updateSiteSettings(body: Partial<SiteSettingsRow>): Promise<ApiResult<SiteSettingsRow>> {
+  return apiPatch<SiteSettingsRow>('settings/admin', body);
+}
+
+/* ===== Журнал действий (PHASE 9.9, ТЗ §38) ===== */
+
+export interface AuditRow {
+  id: string;
+  action: string;
+  entity: string;
+  entityId: string | null;
+  metadata: Record<string, unknown> | null;
+  ip: string | null;
+  createdAt: string;
+  user: { id: string; firstName: string; lastName: string; email: string; role: Role } | null;
+}
+
+export async function fetchAuditLog(limit = 100): Promise<ApiResult<AuditRow[]>> {
+  return apiGet<AuditRow[]>(`audit?limit=${limit}`);
+}
+
+export async function assignBookingManager(id: string, managerId: string | null): Promise<ApiResult<BookingRow>> {
+  return apiPatch<BookingRow>(`bookings/${id}/manager`, { managerId });
+}
+
+/* ===== Вспомогательные глаги ===== */
+
+async function apiPut<T>(path: string, body?: unknown): Promise<ApiResult<T>> {
+  return request<T>(path, { method: 'PUT', body });
+}
+
+async function apiDelete<T>(path: string): Promise<ApiResult<T>> {
+  return request<T>(path, { method: 'DELETE' });
+}
+
 /* ===== Destinations / Hero-карусель (главная, Phase 5+) ===== */
 
 export interface DestinationRow {
   id: string;
   name: string;
+  description?: string | null;
   slug: string;
   isActive: boolean;
   _count?: { tours: number };

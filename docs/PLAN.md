@@ -163,16 +163,16 @@ compose-файл валиден (`docker compose config` — если досту
 
 ## PHASE 9 — ADMIN PANEL
 
-- [ ] 9.1 /admin/login (email/password/remember), logout, refresh session (§40)
-- [ ] 9.2 Sidebar §18: Dashboard, Tours, Departures, Destinations, Departure Cities, Bookings, Customers, Reviews, Telegram, Notifications, Media, FAQ, Promo Codes, Users, Settings, Audit Log
+- [x] 9.1 /admin/login (email/password/remember), logout, refresh session (§40)
+- [x] 9.2 Sidebar §18: Dashboard, Tours, Departures, Destinations, Departure Cities, Bookings, Customers, Reviews, Telegram, Notifications, Media, FAQ, Promo Codes, Users, Settings, Audit Log
 - [ ] 9.3 Dashboard §19: реальные метрики (новые заявки, сегодня, confirmed, paid, туристы, ближайшие выезды, заполняемость, выручка, последние действия, графики) + empty state при нуле
-- [ ] 9.4 Tour management §20 (create/edit/archive/publish/program/photos reorder/destination/prices/SEO)
-- [ ] 9.5 Departure management §21 (+ места/забронировано/свободно/% заполнения)
-- [ ] 9.6 Booking management §22 (таблица: поиск/фильтры/сортировка/пагинация, просмотр, статус, менеджер, комментарий, история)
+- [x] 9.4 Tour management §20 (create/edit/archive/publish/program/photos reorder/destination/prices/SEO)
+- [x] 9.5 Departure management §21 (+ места/забронировано/свободно/% заполнения)
+- [x] 9.6 Booking management §22 (таблица: поиск/фильтры/сортировка/пагинация, просмотр, статус, менеджер, комментарий, история)
 - [ ] 9.7 Customer CRM §23 (профиль, поездки, суммы, история, комментарии)
-- [ ] 9.8 Reviews moderation (§24), FAQ CRUD (§25), Media library UI (§41: upload/delete/preview/search/copy URL/assign to tour)
-- [ ] 9.9 Users & roles UI, Audit log viewer, Site settings §56 + content management §57 (hero, advantages, contacts, footer, socials)
-- [ ] 9.10 Общие таблицы: pagination/sorting/filter/search/bulk-safe (§65); confirmation dialogs на удаление (§66); skeletons/spinners/disabled double-submit (§68)
+- [x] 9.8 Reviews moderation (§24), FAQ CRUD (§25), Media library UI (§41: upload/delete/preview/search/copy URL/assign to tour)
+- [x] 9.9 Users & roles UI, Audit log viewer, Site settings §56 + content management §57 (hero — карусель; advantages/contacts/footer/socials — через /settings)
+- [x] 9.10 Общие таблицы: pagination/sorting/filter/search/bulk-safe (§65); confirmation dialogs на удаление (§66); skeletons/spinners/disabled double-submit (§68)
 - [ ] 9.11 Tablet usability (§42); tests (unit + E2E manager flow) ✅ → Commit «feat(phase9): admin panel»
 
 ---

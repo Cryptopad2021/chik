@@ -15,3 +15,8 @@ export function roleAllows(role: Role | undefined, allowed: Role[]): boolean {
   if (!role) return false;
   return allowed.includes(role);
 }
+
+/** Проверка по строковому литералу роли (безопасно к опечаткам — неизвестная роль = false). */
+export function roleIs(role: Role | '' | undefined, ...roles: Role[]): boolean {
+  return !!role && roles.includes(role);
+}
