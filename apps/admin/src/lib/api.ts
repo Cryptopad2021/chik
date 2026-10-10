@@ -781,3 +781,63 @@ export async function fetchCustomer(id: string): Promise<ApiResult<CustomerProfi
 export async function updateCustomerNote(id: string, note: string | null): Promise<ApiResult<CustomerRow>> {
   return apiPatch<CustomerRow>(`admin/customers/${id}/note`, { note });
 }
+
+/* ===== Telegram (PHASE 10.5/10.6) ===== */
+
+export interface TelegramTemplateInfo {
+  defaultTemplate: string;
+  variables: { name: string; description: string }[];
+}
+
+export interface TelegramPostRow {
+  id: string;
+  text: string;
+  photoUrl: string | null;
+  telegramMessageId: string | null;
+  status: 'DRAFT' | 'SENT' | 'FAILED';
+  error: string | null;
+  publishedAt: string | null;
+  source: string; // PUBLICATION | CHANNEL_INGEST
+  channelUsername: string | null;
+  createdAt: string;
+  tour?: { id: string; title: string; slug: string } | null;
+  departure?: unknown;
+}
+
+export interface TelegramPreviewResult {
+  text: string;
+  photoUrl: string | null;
+  channel: string | null;
+  sendEnabled: boolean;
+}
+
+export async function fetchTelegramTemplateInfo(): Promise<ApiResult<TelegramTemplateInfo>> {
+  return apiGet<TelegramTemplateInfo>('telegram/template-variables');
+}
+
+export async function fetchTelegramPosts(limit = 50): Promise<ApiResult<TelegramPostRow[]>> {
+  return apiGet<TelegramPostRow[]>(`telegram/posts?limit=${limit}`);
+}
+
+export async function previewTelegramPost(
+  departureId: string,
+  template: string | null,
+): Promise<ApiResult<TelegramPreviewResult>> {
+  return apiPost<TelegramPreviewResult>(`telegram/departures/${departureId}/preview`, { template });
+}
+
+export async function publishTelegramPost(
+  departureId: string,
+): Promise<ApiResult<{ sent: boolean; dryRun?: boolean; post: TelegramPostRow }>> {
+  return apiPost(`telegram/departures/${departureId}/publish`, {});
+}
+
+/** Ручной ingest поста из канала (ТЗ 10.6). */
+export async function ingestTelegramPost(body: {
+  text: string;
+  photoUrl?: string | null;
+  channelUsername?: string | null;
+  messageId?: string | null;
+}): Promise<ApiResult<{ ingested: boolean; postId?: string; reason?: string }>> {
+  return apiPost('telegram/ingest', body);
+}

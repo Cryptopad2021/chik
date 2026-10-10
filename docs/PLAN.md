@@ -179,13 +179,13 @@ compose-файл валиден (`docker compose config` — если досту
 
 ## PHASE 10 — TELEGRAM
 
-- [ ] 10.1 TelegramService (§31): sendMessage/sendPhoto/sendBookingNotification/sendStatusNotification/sendTourPublication/sendReminder; credentials только из env; логирование без токена
-- [ ] 10.2 POST /api/telegram/webhook (§47) с проверкой secret-token; регистрация webhook при старте (feature flag)
-- [ ] 10.3 Bot booking flow §32: направления→тур→дата→город→кол-во→телефон→Booking(source=TELEGRAM) в общей БД + inline-клавиатуры + FSM-состояния
-- [ ] 10.4 Publication §33: «Опубликовать в Telegram» из админа → шаблон (§34: {{tour.title}}, {{departure.startDate}}, {{departure.price}}, {{departure.availableSeats}}, {{departure.cities}}, {{bookingUrl}}…) → фото + inline button → TelegramPost record + telegramMessageId
-- [ ] 10.5 Template editor в админке + preview сообщения
-- [ ] 10.6 Sync-получатель поста канала (TelegramPost как источник контента) — базовый ingest
-- [ ] 10.7 Тесты: template render unit, publication service (mocked fetch), webhook signature; lint/typecheck/test ✅ → Commit «feat(phase10): telegram integration»
+- [x] 10.1 TelegramService (§31): sendMessage/sendPhoto/sendBookingNotification/sendStatusNotification/sendTourPublication/sendReminder; credentials только из env; логирование без токена
+- [x] 10.2 POST /api/telegram/webhook (§47) с проверкой secret-token; регистрация webhook при старте (feature flag)
+- [x] 10.3 Bot booking flow §32: направления→тур→дата→город→кол-во→телефон→Booking(source=TELEGRAM) в общей БД + inline-клавиатуры + FSM-состояния
+- [x] 10.4 Publication §33: «Опубликовать в Telegram» из админа → шаблон (§34: {{tour.title}}, {{departure.startDate}}, {{departure.price}}, {{departure.availableSeats}}, {{departure.cities}}, {{bookingUrl}}…) → фото + inline button → TelegramPost record + telegramMessageId
+- [x] 10.5 Template editor в админке + preview сообщения
+- [x] 10.6 Sync-получатель поста канала (TelegramPost как источник контента) — базовый ingest
+- [x] 10.7 Тесты: template render unit, publication service (mocked fetch), webhook signature; lint/typecheck/test ✅ → Commit «feat(phase10): telegram integration»
 
 ---
 

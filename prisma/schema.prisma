@@ -441,6 +441,10 @@ model TelegramPost {
   status            TelegramPostStatus @default(DRAFT)
   error             String?
   publishedAt       DateTime?
+  // ingest канала (ТЗ 10.6): посты из Telegram-канала как источник контента
+  source            String             @default("PUBLICATION") // PUBLICATION | CHANNEL_INGEST
+  channelChatId     String?
+  channelUsername   String?
   createdAt         DateTime           @default(now())
 
   tour      Tour?      @relation(fields: [tourId], references: [id])

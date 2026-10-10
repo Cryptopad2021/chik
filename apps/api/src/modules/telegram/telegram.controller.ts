@@ -3,7 +3,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { TelegramBotService } from './telegram-bot.service';
 import { TelegramPublicationService } from './telegram-publication.service';
 import { TelegramService } from './telegram.service';
-import { TEMPLATE_VARIABLES } from './template';
+
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { RequirePermissions } from '../../common/decorators/permissions.decorator';
@@ -57,7 +57,26 @@ export class TelegramController {
   @RequirePermissions(PERMISSIONS.TELEGRAM_PUBLISH)
   @ApiOperation({ summary: 'Доступные переменные шаблона (редактор админки, ТЗ 10.5)' })
   templateVariables() {
-    return { success: true, data: TEMPLATE_VARIABLES };
+    return { success: true, data: this.publication.templateInfo() };
+  }
+
+  @Post('ingest')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @ApiBearerAuth()
+  @RequirePermissions(PERMISSIONS.TELEGRAM_PUBLISH)
+  @ApiOperation({ summary: 'Ручной ingest поста из канала (ТЗ 10.6): forward-контент как источник' })
+  async ingest(@Body() body: { text?: string; photoUrl?: string | null; channelUsername?: string | null; messageId?: string | null }) {
+    const text = (body?.text ?? '').trim();
+    if (!text) throw AppException.validation('Текст поста обязателен');
+    const res = await this.publication.ingestForwardedFromChannel({
+      message: {
+        message_id: body.messageId ?? `manual:${Date.now()}`,
+        text,
+        photo: body.photoUrl ? [{ file_id: body.photoUrl }] : undefined,
+        sender_chat: { id: body.channelUsername ?? '@unknown', username: (body.channelUsername ?? '@unknown').replace(/^@/, '') },
+      },
+    });
+    return { success: true, data: res };
   }
 
   @Post('departures/:id/preview')

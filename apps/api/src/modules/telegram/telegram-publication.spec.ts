@@ -46,6 +46,8 @@ function makeMocks(overrides: Record<string, unknown> = {}) {
         return p;
       },
       findMany: async () => posts,
+      findFirst: async ({ where }: { where: { telegramMessageId?: string } }) =>
+        posts.find((x) => x.telegramMessageId === where.telegramMessageId) ?? null,
     },
   };
   const config = { get: (k: string) => (k === 'WEB_URL' ? 'https://chirkey.tour' : undefined) };
@@ -112,5 +114,69 @@ describe('TelegramPublicationService (§33)', () => {
   it('несуществующий выезд → DEPARTURE_NOT_FOUND', async () => {
     const m = makeMocks({});
     await expect(service(m).buildContext('nope')).rejects.toMatchObject({ code: 'DEPARTURE_NOT_FOUND' });
+  });
+});
+
+describe('ingest канала (ТЗ 10.6)', () => {
+  const channelUpdate = (over: Record<string, unknown> = {}) => ({
+    message: {
+      message_id: 501,
+      date: 1760000000,
+      text: 'Пост из канала: новый тур!',
+      forward_from_chat: { id: -1001234567890, username: 'chirkey_tours', type: 'channel' },
+      ...over,
+    },
+  });
+
+  it('forward из канала → TelegramPost(source=CHANNEL_INGEST), дедуп по messageId', async () => {
+    const m = makeMocks({ channelId: '@chirkey_tours', sendEnabled: false });
+    const s = service(m);
+    const res = await s.ingestForwardedFromChannel(channelUpdate());
+    expect(res.ingested).toBe(true);
+    expect(m.posts[0]).toMatchObject({
+      source: 'CHANNEL_INGEST',
+      status: 'SENT',
+      telegramMessageId: '501',
+      channelChatId: '-1001234567890',
+      channelUsername: 'chirkey_tours',
+      text: 'Пост из канала: новый тур!',
+    });
+    // повтор того же сообщения → DUPLICATE
+    const again = await s.ingestForwardedFromChannel(channelUpdate());
+    expect(again).toMatchObject({ ingested: false, reason: 'DUPLICATE' });
+    expect(m.posts).toHaveLength(1);
+  });
+
+  it('ботский echo (forward_from.is_bot) игнорируется', async () => {
+    const m = makeMocks({});
+    const res = await service(m).ingestForwardedFromChannel(
+      channelUpdate({ forward_from: { is_bot: true, id: 777 } }),
+    );
+    expect(res).toEqual({ ingested: false, reason: 'BOT_ECHO' });
+  });
+
+  it('обычное пользовательское сообщение — не ingest (NOT_FROM_CHANNEL)', async () => {
+    const m = makeMocks({});
+    const res = await service(m).ingestForwardedFromChannel({ message: { message_id: 1, text: 'привет' } });
+    expect(res).toMatchObject({ ingested: false, reason: 'NOT_FROM_CHANNEL' });
+    expect(m.posts).toHaveLength(0);
+  });
+
+  it('caption вместо text тоже инgestится; пустой текст → NO_TEXT', async () => {
+    const m = makeMocks({});
+    const res = await service(m).ingestForwardedFromChannel(
+      channelUpdate({ text: undefined, caption: 'Подпись к фото', photo: [{ file_id: 'a' }, { file_id: 'big' }] }),
+    );
+    expect(res.ingested).toBe(true);
+    expect(m.posts[0]).toMatchObject({ text: 'Подпись к фото', photoUrl: 'big' });
+    const empty = await service(makeMocks({})).ingestForwardedFromChannel(channelUpdate({ text: '', caption: '' }));
+    expect(empty).toMatchObject({ ingested: false, reason: 'NO_TEXT' });
+  });
+
+  it('templateInfo возвращает дефолтный шаблон и переменные (ТЗ 10.5)', () => {
+    const m = makeMocks({});
+    const info = service(m).templateInfo();
+    expect(info.defaultTemplate).toContain('{{tour.title}}');
+    expect(info.variables.map((v) => v.name)).toContain('departure.availableSeats');
   });
 });

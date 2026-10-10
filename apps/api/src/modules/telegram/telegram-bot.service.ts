@@ -2,6 +2,7 @@ import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { TelegramService, InlineButton } from './telegram.service';
+import { TelegramPublicationService } from './telegram-publication.service';
 import { formatDateRu } from './template';
 import { bookingsCreateViaCore } from './bookings-bridge';
 
@@ -35,6 +36,7 @@ export class TelegramBotService implements OnApplicationBootstrap {
     private readonly prisma: PrismaService,
     private readonly telegram: TelegramService,
     private readonly config: ConfigService,
+    private readonly publication: TelegramPublicationService,
   ) {}
 
   /** Регистрация webhook при старте — только под feature-флагом (§55, ТЗ 10.2). */
@@ -69,6 +71,26 @@ export class TelegramBotService implements OnApplicationBootstrap {
    * /start → направления → тур → дата → город → кол-во → телефон → имя → Booking(source=TELEGRAM).
    */
   async handleUpdate(update: Record<string, unknown>): Promise<void> {
+    // Ingest канала (ТЗ 10.6): пересланный из канала пост → TelegramPost(sourceChannel).
+    const maybeForward = update.message as Record<string, unknown> | undefined;
+    if (maybeForward && (maybeForward.forward_from_chat || maybeForward.sender_chat)) {
+      const res = await this.publication.ingestForwardedFromChannel(update);
+      if (res.ingested) {
+        this.logger.log({ msg: 'telegram_channel_ingested', postId: res.postId });
+        return; // пересланный пост — не пользовательский ввод wizard-а
+      }
+      // NOT_FROM_CHANNEL/OTHER_CHAT → вероятно сообщение от пользователя с пересылкой — идём дальше
+    }
+
+    // callback_query: inline-кнопки wizard-а (§32) — выбор по id, без счётчика позиций
+    const callback = update.callback_query as
+      | { id?: string; message?: { chat?: { id?: number } }; data?: string }
+      | undefined;
+    if (callback?.message?.chat?.id && typeof callback.data === 'string') {
+      await this.handleCallback(String(callback.message.chat.id), callback.data);
+      return;
+    }
+
     const message = update.message as
       | {
           chat?: { id?: number };
@@ -76,7 +98,7 @@ export class TelegramBotService implements OnApplicationBootstrap {
           from?: { id?: number; username?: string; first_name?: string };
         }
       | undefined;
-    if (!message?.chat?.id) return; // callback_query и прочие — вне скоупа базового ingest
+    if (!message?.chat?.id) return; // прочие типы апдейтов — вне скоупа
     const chatId = String(message.chat.id);
     const text = (message.text ?? '').trim();
     const buttons: InlineButton[] = [];
@@ -203,6 +225,56 @@ export class TelegramBotService implements OnApplicationBootstrap {
       adults: state.adults,
       phone,
     });
+  }
+
+  /**
+   * Обработка нажатия inline-кнопки wizard-а (§32): callback_data вида `dest:<id>`,
+   * `tour:<id>`, `dep:<id>`, `city:<id>` — выбор сущности напрямую по id (надёжнее,
+   * чем счётчик позиций текстового ввода).
+   */
+  async handleCallback(chatId: string, data: string): Promise<void> {
+    const [kind, id] = data.split(':');
+    if (!kind || !id) return;
+    switch (kind) {
+      case 'dest': {
+        const dest = await this.prisma.destination.findUnique({ where: { id }, select: { id: true, name: true } }).catch(() => null);
+        if (!dest) return;
+        this.setSession(chatId, { step: 'PICK_TOUR', destinationId: dest.id });
+        await this.reply(chatId, `Направление «${dest.name}». Выберите тур:`, await this.tourButtons(dest.id));
+        return;
+      }
+      case 'tour': {
+        const tour = await this.prisma.tour.findUnique({ where: { id }, select: { id: true, title: true } }).catch(() => null);
+        if (!tour) return;
+        this.setSession(chatId, { step: 'PICK_DEPARTURE', tourId: tour.id });
+        await this.reply(chatId, `Тур «${tour.title}». Ближайшие даты:`, await this.departureButtons(tour.id));
+        return;
+      }
+      case 'dep': {
+        const dep = await this.prisma.departure.findUnique({ where: { id }, select: { id: true } }).catch(() => null);
+        if (!dep) return;
+        const cities = await this.cityButtons(dep.id);
+        if (cities.length === 0) {
+          this.setSession(chatId, { step: 'ASK_SEATS', departureId: dep.id, departureCityId: '' });
+          await this.reply(chatId, 'Сколько взрослых? (число)');
+          return;
+        }
+        this.setSession(chatId, { step: 'PICK_CITY', departureId: dep.id });
+        await this.reply(chatId, 'Выберите город отправления:', cities);
+        return;
+      }
+      case 'city': {
+        const session = this.getSession(chatId);
+        const departureId =
+          'departureId' in session.state ? session.state.departureId : undefined;
+        if (!departureId) return;
+        this.setSession(chatId, { step: 'ASK_SEATS', departureId, departureCityId: id });
+        await this.reply(chatId, 'Сколько взрослых? (число)');
+        return;
+      }
+      default:
+        return;
+    }
   }
 
   /** Ответ наружу только если включена реальная отправка (§55); иначе — структурированный лог. */
