@@ -165,11 +165,11 @@ compose-файл валиден (`docker compose config` — если досту
 
 - [x] 9.1 /admin/login (email/password/remember), logout, refresh session (§40)
 - [x] 9.2 Sidebar §18: Dashboard, Tours, Departures, Destinations, Departure Cities, Bookings, Customers, Reviews, Telegram, Notifications, Media, FAQ, Promo Codes, Users, Settings, Audit Log
-- [ ] 9.3 Dashboard §19: реальные метрики (новые заявки, сегодня, confirmed, paid, туристы, ближайшие выезды, заполняемость, выручка, последние действия, графики) + empty state при нуле
+- [x] 9.3 Dashboard §19: реальные метрики (новые заявки, сегодня, confirmed, paid, туристы, ближайшие выезды, заполняемость, выручка, последние действия) + empty state при нуле (GET /admin/dashboard, admin-stats модуль)
 - [x] 9.4 Tour management §20 (create/edit/archive/publish/program/photos reorder/destination/prices/SEO)
 - [x] 9.5 Departure management §21 (+ места/забронировано/свободно/% заполнения)
 - [x] 9.6 Booking management §22 (таблица: поиск/фильтры/сортировка/пагинация, просмотр, статус, менеджер, комментарий, история)
-- [ ] 9.7 Customer CRM §23 (профиль, поездки, суммы, история, комментарии)
+- [x] 9.7 Customer CRM §23 (профиль, поездки, суммы, история; комментарии — через заявки/аудит) — /customers + /customers/[id], GET /admin/customers
 - [x] 9.8 Reviews moderation (§24), FAQ CRUD (§25), Media library UI (§41: upload/delete/preview/search/copy URL/assign to tour)
 - [x] 9.9 Users & roles UI, Audit log viewer, Site settings §56 + content management §57 (hero — карусель; advantages/contacts/footer/socials — через /settings)
 - [x] 9.10 Общие таблицы: pagination/sorting/filter/search/bulk-safe (§65); confirmation dialogs на удаление (§66); skeletons/spinners/disabled double-submit (§68)

@@ -27,6 +27,7 @@ const svg = (d: string) => (
 export const NAV_ITEMS: NavItem[] = [
   { href: '/dashboard', label: 'Дашборд', icon: svg('M3 12l9-9 9 9M5 10v10h14V10') },
   { href: '/bookings', label: 'Заявки', icon: svg('M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4'), roles: ['SUPER_ADMIN', 'ADMIN', 'MANAGER'] },
+  { href: '/customers', label: 'Клиенты', icon: svg('M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z'), roles: ['SUPER_ADMIN', 'ADMIN', 'MANAGER'] },
   { href: '/tours', label: 'Туры', icon: svg('M12 21a9 9 0 100-18 9 9 0 000 18zM3.6 9h16.8M3.6 15h16.8M12 3a15 15 0 010 18 15 15 0 010-18') },
   { href: '/departures', label: 'Выезды', icon: svg('M8 7V3m8 4V3M4 11h16M5 5h14a1 1 0 011 1v13a1 1 0 01-1 1H5a1 1 0 01-1-1V6a1 1 0 011-1z') },
   { href: '/destinations', label: 'Направления', icon: svg('M9 20l-5.5-2.5v-11L9 9m0 11l6-2.5m-6 2.5V9m6 8.5L21.5 20V9L15 11.5M15 4.5L9 6.5m6-2L21.5 9M15 4.5V11.5') },
@@ -44,6 +45,7 @@ export const NAV_ITEMS: NavItem[] = [
 const READY_HREFS = new Set([
   '/dashboard',
   '/bookings',
+  '/customers',
   '/tours',
   '/departures',
   '/destinations',

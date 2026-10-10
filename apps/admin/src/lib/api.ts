@@ -649,3 +649,135 @@ export async function logout(): Promise<void> {
   await request('auth/logout', { method: 'POST', retryOn401: false });
   accessToken = null;
 }
+
+/* ============================ DASHBOARD (§19) + CRM (§23) ============================ */
+
+export interface DashboardCards {
+  newTotal: number;
+  newToday: number;
+  contacted: number;
+  confirmedActive: number;
+  paid: number;
+  completed: number;
+  cancelled: number;
+  revenue: number;
+  paidBookings: number;
+  tourists: number;
+}
+
+export interface DashboardPoint {
+  date: string;
+  count: number;
+  revenue: number;
+}
+
+export interface DashboardDeparture {
+  id: string;
+  startDate: string;
+  totalSeats: number;
+  bookedSeats: number;
+  availableSeats: number;
+  status: string;
+  tour: { id: string; title: string; slug: string };
+}
+
+export interface DashboardBooking {
+  id: string;
+  bookingNumber: string;
+  status: BookingStatusValue;
+  totalAmount: string | number;
+  currency: string;
+  createdAt: string;
+  customerId: string;
+  customer: { id: string; firstName: string; lastName: string } | null;
+  departure: { startDate: string; tour: { title: string } | null } | null;
+  customerNote: string | null;
+}
+
+export interface DashboardAction {
+  id: string;
+  action: string;
+  entity: string;
+  entityId: string;
+  createdAt: string;
+  user: { firstName: string; lastName: string; role: string } | null;
+}
+
+export interface DashboardData {
+  periodDays: number;
+  cards: DashboardCards;
+  chart: DashboardPoint[];
+  upcomingDepartures: DashboardDeparture[];
+  occupancy: { departures: number; seats: number; booked: number; percent: number };
+  recentBookings: DashboardBooking[];
+  recentActions: DashboardAction[];
+}
+
+export async function fetchDashboard(days = 30): Promise<ApiResult<DashboardData>> {
+  return apiGet<DashboardData>(`admin/dashboard?days=${days}`);
+}
+
+export interface CustomerRow {
+  id: string;
+  firstName: string;
+  lastName: string;
+  middleName: string | null;
+  phone: string;
+  email: string | null;
+  telegramUsername: string | null;
+  note: string | null;
+  isDemo: boolean;
+  createdAt: string;
+  bookingsCount: number;
+  reviewsCount: number;
+  totalAmount: number;
+}
+
+export async function fetchCustomers(
+  params: { search?: string; page?: number; perPage?: number } = {},
+): Promise<ApiResult<ListResult<CustomerRow>>> {
+  const qs = new URLSearchParams();
+  if (params.search) qs.set('search', params.search);
+  if (params.page) qs.set('page', String(params.page));
+  if (params.perPage) qs.set('perPage', String(params.perPage));
+  const suffix = qs.toString() ? `?${qs.toString()}` : '';
+  return apiGet<ListResult<CustomerRow>>(`admin/customers${suffix}`);
+}
+
+export interface CustomerTrip {
+  id: string;
+  bookingNumber: string;
+  status: BookingStatusValue;
+  source: string;
+  adults: number;
+  children10to14: number;
+  childrenUnder10: number;
+  totalAmount: string | number;
+  currency: string;
+  comment: string | null;
+  createdAt: string;
+  departure: { id: string; startDate: string; endDate: string; tour: { id: string; title: string; slug: string } | null } | null;
+  departureCity: { id: string; name: string } | null;
+  assignedManager: { id: string; firstName: string; lastName: string } | null;
+  history: {
+    id: string;
+    fromStatus: BookingStatusValue | null;
+    toStatus: BookingStatusValue;
+    note: string | null;
+    createdAt: string;
+  }[];
+}
+
+export interface CustomerProfile {
+  customer: CustomerRow & { telegramUserId: string };
+  stats: { bookingsCount: number; totalAmount: number; paidAmount: number; tourists: number };
+  bookings: CustomerTrip[];
+}
+
+export async function fetchCustomer(id: string): Promise<ApiResult<CustomerProfile>> {
+  return apiGet<CustomerProfile>(`admin/customers/${id}`);
+}
+
+export async function updateCustomerNote(id: string, note: string | null): Promise<ApiResult<CustomerRow>> {
+  return apiPatch<CustomerRow>(`admin/customers/${id}/note`, { note });
+}
