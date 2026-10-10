@@ -5,6 +5,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { AppException } from '../../common/app-exception';
 import { CreateBookingDto } from './dto';
 import { NotificationsService } from '../notifications/notifications.service';
+import { AnalyticsService } from '../analytics/analytics.service';
 
 /**
  * Бизнес-логика бронирования (ТЗ §14–17, 54).
@@ -15,6 +16,7 @@ export class BookingsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
+    private readonly analytics: AnalyticsService,
   ) {}
 
   private get db() {
@@ -144,6 +146,15 @@ export class BookingsService {
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted, maxWait: 5000, timeout: 10000 },
     ).then(async (res) => {
+      // Событие аналитики «заявка создана» (ТЗ §71): только id/источник, без ПДн (§72).
+      if (!res.replayed) {
+        void this.analytics.safeTrack({
+          type: 'booking_created',
+          bookingId: res.booking.id,
+          departureId: res.booking.departureId,
+          source: dto.source ?? 'WEBSITE',
+        });
+      }
       // Уведомления о новой заявке (ТЗ §15, §35). Внешние отправки — за feature-флагом (§55),
       // поэтому ошибка уведомления не должна ломать уже созданное бронирование.
       if (!res.replayed) {
@@ -269,6 +280,14 @@ export class BookingsService {
       }
       return updated;
     });
+
+    // Событие аналитики «подтверждена» для воронки (§71, 12.2). tourId — через выезд.
+    if (result.status === 'CONFIRMED') {
+      const dep = await this.db.departure
+        .findUnique({ where: { id: booking.departureId }, select: { tourId: true } })
+        .catch(() => null);
+      void this.analytics.safeTrack({ type: 'booking_confirmed', bookingId: id, departureId: booking.departureId, tourId: dep?.tourId });
+    }
 
     // Уведомления о смене статуса (ТЗ §22, §35): клиенту EMAIL + SYSTEM-ленте. Не блокируем ответ.
     void this.db.booking

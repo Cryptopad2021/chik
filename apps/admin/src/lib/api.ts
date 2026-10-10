@@ -881,3 +881,28 @@ export async function retryFailedNotifications(
 ): Promise<ApiResult<{ retriedSent: number }>> {
   return apiPost<{ retriedSent: number }>('admin/notifications/retry-failed', { limit });
 }
+
+/* ===== Аналитика (PHASE 12.3) ===== */
+
+export interface FunnelStep { step: string; count: number }
+export interface FunnelData { since: string; steps: FunnelStep[]; conversion: number | null }
+export interface EventByDayRow { day: string; type: string; count: number }
+export interface TopTourRow { tourId: string; title: string; views: number; selects: number; created: number }
+export interface UtmRow { utmSource: string | null; utmMedium: string | null; utmCampaign: string | null; count: number }
+export interface TelegramStats { telegramClicks: number; publications: number }
+
+export async function fetchAnalyticsFunnel(days = 30): Promise<ApiResult<FunnelData>> {
+  return apiGet<FunnelData>(`admin/analytics/funnel?days=${days}`);
+}
+export async function fetchAnalyticsEventsByDay(days = 30): Promise<ApiResult<EventByDayRow[]>> {
+  return apiGet<EventByDayRow[]>(`admin/analytics/events-by-day?days=${days}`);
+}
+export async function fetchAnalyticsTopTours(days = 30): Promise<ApiResult<TopTourRow[]>> {
+  return apiGet<TopTourRow[]>(`admin/analytics/top-tours?days=${days}`);
+}
+export async function fetchAnalyticsUtm(days = 30): Promise<ApiResult<UtmRow[]>> {
+  return apiGet<UtmRow[]>(`admin/analytics/utm?days=${days}`);
+}
+export async function fetchAnalyticsTelegram(days = 30): Promise<ApiResult<TelegramStats>> {
+  return apiGet<TelegramStats>(`admin/analytics/telegram?days=${days}`);
+}

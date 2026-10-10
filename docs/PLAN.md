@@ -202,10 +202,10 @@ compose-файл валиден (`docker compose config` — если досту
 
 ## PHASE 12 — ANALYTICS
 
-- [ ] 12.1 Analytics abstraction (§71): события view_tour, select_departure, start_booking, booking_created, booking_confirmed, telegram_click, phone_click, review_submitted; без ПДн (§72)
-- [ ] 12.2 Backend aggregation endpoints: bookings by day/tour/destination, revenue by month, customers by source, TG vs Website, conversion funnel (§73)
-- [ ] 12.3 Дашборд-графики в админке (реальные данные из API)
-- [ ] 12.4 Тесты агрегатов ✅ → Commit «feat(phase12): analytics»
+- [x] 12.1 Analytics abstraction (§71): события view_tour, select_departure, start_booking, booking_created, booking_confirmed, telegram_click, phone_click, review_submitted; без ПДн (§72)
+- [x] 12.2 Backend aggregation endpoints: bookings by day/tour/destination, revenue by month, customers by source, TG vs Website, conversion funnel (§73)
+- [x] 12.3 Дашборд-графики в админке (реальные данные из API)
+- [x] 12.4 Тесты агрегатов ✅ → Commit «feat(phase12): analytics»
 
 ---
 

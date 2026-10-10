@@ -18,6 +18,7 @@ import { MediaModule } from "./modules/media/media.module";
 import { NotificationsModule } from "./modules/notifications/notifications.module";
 import { TelegramModule } from "./modules/telegram/telegram.module";
 import { AdminStatsModule } from "./modules/admin-stats/admin-stats.module";
+import { AnalyticsModule } from "./modules/analytics/analytics.module";
 import { HealthController } from "./modules/health/health.controller";
 
 @Module({
@@ -44,6 +45,7 @@ import { HealthController } from "./modules/health/health.controller";
     NotificationsModule,
     TelegramModule,
     AdminStatsModule,
+    AnalyticsModule,
   ],
   controllers: [HealthController],
 })

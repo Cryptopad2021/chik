@@ -5,6 +5,7 @@ import { TelegramService, InlineButton } from './telegram.service';
 import { TelegramPublicationService } from './telegram-publication.service';
 import { formatDateRu } from './template';
 import { bookingsCreateViaCore } from './bookings-bridge';
+import { AnalyticsService } from '../analytics/analytics.service';
 
 /**
  * Bot-диалог бронирования в Telegram (ТЗ §32, Phase 10.3) + webhook-обработчик
@@ -37,6 +38,7 @@ export class TelegramBotService implements OnApplicationBootstrap {
     private readonly telegram: TelegramService,
     private readonly config: ConfigService,
     private readonly publication: TelegramPublicationService,
+    private readonly analytics: AnalyticsService,
   ) {}
 
   /** Регистрация webhook при старте — только под feature-флагом (§55, ТЗ 10.2). */
@@ -87,7 +89,14 @@ export class TelegramBotService implements OnApplicationBootstrap {
       | { id?: string; message?: { chat?: { id?: number } }; data?: string }
       | undefined;
     if (callback?.message?.chat?.id && typeof callback.data === 'string') {
-      await this.handleCallback(String(callback.message.chat.id), callback.data);
+      const chatId = String(callback.message.chat.id);
+      // Событие аналитики telegram_click (§71): только тип кнопки + анонимный id чата, без ПДн (§72).
+      void this.analytics.safeTrack({
+        type: 'telegram_click',
+        sessionId: `tg:${chatId}`,
+        metadata: { buttonKind: callback.data.split(':')[0] },
+      });
+      await this.handleCallback(chatId, callback.data);
       return;
     }
 

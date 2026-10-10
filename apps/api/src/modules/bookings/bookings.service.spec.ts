@@ -107,7 +107,8 @@ function buildPrisma(cfg: FakeDbConfig = {}) {
     onBookingCreated: vi.fn(async () => undefined),
     notify: vi.fn(async () => ({ id: 'n-1', status: 'SKIPPED' })),
   } as unknown as NotificationsService;
-  return { prisma: prisma as never, tx, state, notifications };
+  const analytics = { safeTrack: vi.fn(async () => undefined) } as never;
+  return { prisma: prisma as never, tx, state, notifications, analytics };
 }
 
 describe('BookingsService.create — seat safety (ТЗ §54)', () => {
@@ -116,7 +117,7 @@ describe('BookingsService.create — seat safety (ТЗ §54)', () => {
 
   beforeEach(() => {
     h = buildPrisma();
-    svc = new BookingsService(h.prisma, h.notifications);
+    svc = new BookingsService(h.prisma, h.notifications, h.analytics);
   });
 
   it('создаёт заявку внутри транзакции со строковой блокировкой FOR UPDATE', async () => {
@@ -130,13 +131,13 @@ describe('BookingsService.create — seat safety (ТЗ §54)', () => {
 
   it('отклоняет бронирование, когда свободных мест меньше запрошенных (overselling protection)', async () => {
     h = buildPrisma({ totalSeats: 3, bookedSeats: 2 }); // available = 1, need = 3
-    svc = new BookingsService(h.prisma, h.notifications);
+    svc = new BookingsService(h.prisma, h.notifications, h.analytics);
     await expect(svc.create(makeDto())).rejects.toMatchObject({ code: 'SEATS_INSUFFICIENT' });
   });
 
   it('предварительная проверка отклоняет нехватку мест до UPDATE; при гонке спасает атомарный guard', async () => {
     h = buildPrisma({ totalSeats: 3, bookedSeats: 2 });
-    svc = new BookingsService(h.prisma, h.notifications);
+    svc = new BookingsService(h.prisma, h.notifications, h.analytics);
     const err = await svc.create(makeDto()).catch((e) => e);
     expect(err).toBeInstanceOf(AppException);
     expect((err as AppException).code).toBe('SEATS_INSUFFICIENT');
@@ -145,7 +146,7 @@ describe('BookingsService.create — seat safety (ТЗ §54)', () => {
     const hRace = buildPrisma({ totalSeats: 10, bookedSeats: 8 }); // available=2, need=3? нет: need=3 > 2 → сначала pre-check.
     // Для гонки делаем available >= need на чтении, но UPDATE всегда возвращает 0:
     (hRace.tx.$executeRaw as ReturnType<typeof vi.fn>).mockImplementation(async () => 0);
-    const svcRace = new BookingsService(hRace.prisma, hRace.notifications);
+    const svcRace = new BookingsService(hRace.prisma, hRace.notifications, hRace.analytics);
     const dtoRace = makeDto({ adults: 2, children10to14: 0, passengers: [
       { firstName: 'A', lastName: 'B', passengerType: 'ADULT' },
       { firstName: 'C', lastName: 'D', passengerType: 'ADULT' },
@@ -159,7 +160,7 @@ describe('BookingsService.create — seat safety (ТЗ §54)', () => {
   it('нельзя бронировать на закрытый выезд (CANCELLED/FULL/COMPLETED)', async () => {
     for (const status of ['CANCELLED', 'FULL', 'COMPLETED']) {
       h = buildPrisma({ status });
-      svc = new BookingsService(h.prisma, h.notifications);
+      svc = new BookingsService(h.prisma, h.notifications, h.analytics);
       const err = await svc.create(makeDto()).catch((e) => e);
       expect(err).toBeInstanceOf(AppException);
     }
@@ -179,7 +180,7 @@ describe('BookingsService.create — seat safety (ТЗ §54)', () => {
 describe('BookingsService.create — pricing & idempotency (ТЗ §17, 68)', () => {
   it('цена считается на сервере: городская цена имеет приоритет над ценой выезда', async () => {
     const h = buildPrisma({ cityPrice: 15000 });
-    const svc = new BookingsService(h.prisma, h.notifications);
+    const svc = new BookingsService(h.prisma, h.notifications, h.analytics);
     const res = await svc.create(makeDto());
     // 2 adults × 15000 + 1 child10 × 8000 = 38000
     expect(Number(res.booking.totalAmount)).toBe(38000);
@@ -187,7 +188,7 @@ describe('BookingsService.create — pricing & idempotency (ТЗ §17, 68)', () 
 
   it('без городской цены используется цена выезда', async () => {
     const h = buildPrisma({ cityPrice: null });
-    const svc = new BookingsService(h.prisma, h.notifications);
+    const svc = new BookingsService(h.prisma, h.notifications, h.analytics);
     const res = await svc.create(makeDto());
     // 2×12000 + 1×8000 = 32000
     expect(Number(res.booking.totalAmount)).toBe(32000);
@@ -195,7 +196,7 @@ describe('BookingsService.create — pricing & idempotency (ТЗ §17, 68)', () 
 
   it('идемпотентный повтор возвращает существующую заявку без новой транзакции', async () => {
     const h = buildPrisma();
-    const svc = new BookingsService(h.prisma, h.notifications);
+    const svc = new BookingsService(h.prisma, h.notifications, h.analytics);
     (h.tx.booking.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
       id: 'existing-1',
       bookingNumber: 'CHT-20261009-00000',
@@ -220,7 +221,7 @@ describe('BookingsService.changeStatus — transitions & seat release (ТЗ §14
 
   it('разрешённый переход NEW→CONTACTED пишет историю', async () => {
     const h = buildForStatus('NEW');
-    const svc = new BookingsService(h.prisma, h.notifications);
+    const svc = new BookingsService(h.prisma, h.notifications, h.analytics);
     const r = await svc.changeStatus('b-1', 'CONTACTED', 'user-1');
     expect(r.previous).toBe('NEW');
     expect(h.tx.bookingStatusHistory.create).toHaveBeenCalled();
@@ -228,13 +229,13 @@ describe('BookingsService.changeStatus — transitions & seat release (ТЗ §14
 
   it('запрещённый переход PAID→NEW отклоняется ConflictException', async () => {
     const h = buildForStatus('PAID');
-    const svc = new BookingsService(h.prisma, h.notifications);
+    const svc = new BookingsService(h.prisma, h.notifications, h.analytics);
     await expect(svc.changeStatus('b-1', 'NEW', 'user-1')).rejects.toBeInstanceOf(ConflictException);
   });
 
   it('CANCELLED освобождает места атомарным UPDATE', async () => {
     const h = buildForStatus('CONFIRMED');
-    const svc = new BookingsService(h.prisma, h.notifications);
+    const svc = new BookingsService(h.prisma, h.notifications, h.analytics);
     await svc.changeStatus('b-1', 'CANCELLED', 'user-1');
     const calls = (h.tx.$executeRaw as ReturnType<typeof vi.fn>).mock.calls;
     const cancelSql = calls.map((c) => (c[0] as TemplateStringsArray).join('?')).find((s) => s.includes('GREATEST'));
@@ -243,7 +244,7 @@ describe('BookingsService.changeStatus — transitions & seat release (ТЗ §14
 
   it('REFUNDED тоже освобождает места', async () => {
     const h = buildForStatus('PAID');
-    const svc = new BookingsService(h.prisma, h.notifications);
+    const svc = new BookingsService(h.prisma, h.notifications, h.analytics);
     await svc.changeStatus('b-1', 'REFUNDED', 'user-1');
     const calls = (h.tx.$executeRaw as ReturnType<typeof vi.fn>).mock.calls;
     expect(calls.some((c) => (c[0] as TemplateStringsArray).join('?').includes('GREATEST'))).toBe(true);
@@ -251,7 +252,7 @@ describe('BookingsService.changeStatus — transitions & seat release (ТЗ §14
 
   it('BOOKING_NOT_FOUND для несуществующей заявки', async () => {
     const h = buildPrisma(); // findUnique returns null
-    const svc = new BookingsService(h.prisma, h.notifications);
+    const svc = new BookingsService(h.prisma, h.notifications, h.analytics);
     const err = await svc.changeStatus('missing', 'CONFIRMED', 'user-1').catch((e) => e);
     expect(err).toBeInstanceOf(AppException);
     expect((err as AppException).code).toBe('BOOKING_NOT_FOUND');

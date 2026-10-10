@@ -116,6 +116,12 @@ export const NAV_ITEMS: NavItem[] = [
     roles: ["SUPER_ADMIN", "ADMIN", "CONTENT_MANAGER"],
   },
   {
+    href: "/analytics",
+    label: "Аналитика",
+    icon: svg("M3 3v18h18M7 14l4-4 3 3 5-6"),
+    roles: ["SUPER_ADMIN", "ADMIN", "MANAGER"],
+  },
+  {
     href: "/notifications",
     label: "Уведомления",
     icon: svg(
@@ -162,6 +168,7 @@ const READY_HREFS = new Set([
   "/faq",
   "/telegram",
   "/notifications",
+  "/analytics",
   "/settings",
   "/users",
   "/audit",
