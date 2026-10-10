@@ -144,18 +144,22 @@ export class BookingsService {
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted, maxWait: 5000, timeout: 10000 },
     ).then(async (res) => {
-      // Уведомление менеджеров о новой заявке (ТЗ §15, §35). Внешние отправки — за feature-флагом (§55),
+      // Уведомления о новой заявке (ТЗ §15, §35). Внешние отправки — за feature-флагом (§55),
       // поэтому ошибка уведомления не должна ломать уже созданное бронирование.
       if (!res.replayed) {
-        void this.notifications
-          .onBookingCreated({
-            bookingId: res.booking.id,
-            bookingNumber: res.booking.bookingNumber,
-            tourTitle: '—',
-            customerName: `${dto.customer.firstName} ${dto.customer.lastName}`.trim(),
-            seats: seatsNeeded,
-            totalAmount: Number(res.booking.totalAmount),
-          })
+        void this.db.departure
+          .findUnique({ where: { id: res.booking.departureId }, include: { tour: { select: { title: true } } } })
+          .then((depFull) =>
+            this.notifications.onBookingCreated({
+              bookingId: res.booking.id,
+              bookingNumber: res.booking.bookingNumber,
+              tourTitle: depFull?.tour?.title ?? '—',
+              customerName: `${dto.customer.firstName} ${dto.customer.lastName}`.trim(),
+              seats: seatsNeeded,
+              totalAmount: Number(res.booking.totalAmount),
+              customerEmail: dto.customer.email ?? null,
+            }),
+          )
           .catch(() => undefined);
       }
       return res;
@@ -265,6 +269,28 @@ export class BookingsService {
       }
       return updated;
     });
+
+    // Уведомления о смене статуса (ТЗ §22, §35): клиенту EMAIL + SYSTEM-ленте. Не блокируем ответ.
+    void this.db.booking
+      .findUnique({
+        where: { id },
+        include: { customer: { select: { firstName: true, lastName: true, email: true } }, departure: { include: { tour: { select: { title: true } } } } },
+      })
+      .then((b) => {
+        if (!b) return undefined;
+        return this.notifications.onBookingStatusChanged({
+          bookingId: b.id,
+          bookingNumber: b.bookingNumber,
+          fromStatus: booking.status,
+          toStatus: result.status,
+          customerName: `${b.customer.firstName} ${b.customer.lastName}`.trim(),
+          customerEmail: b.customer.email,
+          tourTitle: b.departure?.tour?.title,
+          note,
+        });
+      })
+      .catch(() => undefined);
+
     return { previous: booking.status, current: result.status };
   }
 

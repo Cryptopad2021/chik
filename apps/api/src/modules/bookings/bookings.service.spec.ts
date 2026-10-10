@@ -73,6 +73,7 @@ function buildPrisma(cfg: FakeDbConfig = {}) {
     tour: { findUniqueOrThrow: vi.fn(async () => ({ id: 'tour-1', title: 'Тур', currency: 'RUB', adultPrice: 10000, basePrice: 10000, child10to14Price: 8000, childUnder10Price: 5000 })) },
     departure: {
       findUniqueOrThrow: vi.fn(async () => ({ id: DEP_ID, price: 12000, totalSeats, bookedSeats: state.booked })),
+      findUnique: vi.fn(async () => ({ id: DEP_ID, tour: { title: 'Тур' } })),
       update: vi.fn(async () => ({})),
     },
     departureCityOnDeparture: { findUnique: vi.fn(async () => (cfg.cityPrice != null ? { price: cfg.cityPrice } : null)) },

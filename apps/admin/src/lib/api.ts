@@ -841,3 +841,43 @@ export async function ingestTelegramPost(body: {
 }): Promise<ApiResult<{ ingested: boolean; postId?: string; reason?: string }>> {
   return apiPost('telegram/ingest', body);
 }
+
+/* ===== Уведомления (PHASE 11.5) ===== */
+
+export interface NotificationRow {
+  id: string;
+  event: string;
+  channel: 'TELEGRAM' | 'EMAIL' | 'SYSTEM' | 'SMS';
+  status: 'PENDING' | 'SENT' | 'FAILED' | 'SKIPPED';
+  target: string | null;
+  error: string | null;
+  sentAt: string | null;
+  createdAt: string;
+  bookingId: string | null;
+  payload: { title: string | null; body: string | null };
+}
+
+export interface NotificationsList {
+  items: NotificationRow[];
+  total: number;
+  page: number;
+  perPage: number;
+}
+
+export async function fetchNotifications(
+  params: { status?: string; event?: string; page?: number; perPage?: number } = {},
+): Promise<ApiResult<NotificationsList>> {
+  const qs = new URLSearchParams();
+  if (params.status) qs.set('status', params.status);
+  if (params.event) qs.set('event', params.event);
+  if (params.page) qs.set('page', String(params.page));
+  if (params.perPage) qs.set('perPage', String(params.perPage));
+  const suffix = qs.toString() ? `?${qs.toString()}` : '';
+  return apiGet<NotificationsList>(`admin/notifications${suffix}`);
+}
+
+export async function retryFailedNotifications(
+  limit = 20,
+): Promise<ApiResult<{ retriedSent: number }>> {
+  return apiPost<{ retriedSent: number }>('admin/notifications/retry-failed', { limit });
+}

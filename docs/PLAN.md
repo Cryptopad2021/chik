@@ -191,12 +191,12 @@ compose-файл валиден (`docker compose config` — если досту
 
 ## PHASE 11 — NOTIFICATIONS
 
-- [ ] 11.1 NotificationService: каналы EMAIL/TELEGRAM/SYSTEM, архитектура под SMS (§35); события booking.created/confirmed/cancelled/paid, departure.updated, departure.tomorrow
-- [ ] 11.2 EmailService abstraction + provider-agnostic send() (§36); real SMTP only if env configured
-- [ ] 11.3 Feature flags: реальные отправки только при конфигурации; иначе SYSTEM-запись + dry-run log (§55)
-- [ ] 11.4 Scheduler (§55): напоминания за 7/1 день, просроченные заявки, закрытие прошедших выездов (cron в NestJS Schedule; флаг включения)
-- [ ] 11.5 UI списка уведомлений в админке
-- [ ] 11.6 Тесты unit/integration ✅ → Commit «feat(phase11): notifications + cron»
+- [x] 11.1 NotificationService: каналы EMAIL/TELEGRAM/SYSTEM, архитектура под SMS (§35); события booking.created/confirmed/cancelled/paid, departure.updated, departure.tomorrow
+- [x] 11.2 EmailService abstraction + provider-agnostic send() (§36); real SMTP only if env configured
+- [x] 11.3 Feature flags: реальные отправки только при конфигурации; иначе SYSTEM-запись + dry-run log (§55)
+- [x] 11.4 Scheduler (§55): напоминания за 7/1 день, просроченные заявки, закрытие прошедших выездов (cron в NestJS Schedule; флаг включения)
+- [x] 11.5 UI списка уведомлений в админке
+- [x] 11.6 Тесты unit/integration ✅ → Commit «feat(phase11): notifications + cron»
 
 ---
 
