@@ -6,6 +6,8 @@ import { ru } from '@/content/ru';
 import { apiGet, type TourFull, type FaqInfo, type ReviewInfo } from '../../../lib/api';
 import { formatPrice, formatDate, formatDuration, seatsLabel } from '../../../lib/format';
 import { ReviewCard } from '../../../components/ReviewCard';
+import { Breadcrumbs } from '../../../components/Breadcrumbs';
+import { breadcrumbLd, aggregateRatingLd, reviewItemsLd, jsonLdScript } from '../../../lib/seo';
 
 interface ListResponse<T> { items: T[]; total: number }
 
@@ -34,7 +36,10 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   };
 }
 
-/** JSON-LD Product (ТЗ §30) — только реальные данные со страницы */
+/**
+ * JSON-LD Product/TouristTrip (ТЗ §30, 13.3) — только реальные данные со страницы.
+ * AggregateRating добавляется ТОЛЬКО при наличии опубликованных отзывов (§13.5).
+ */
 function tourJsonLd(tour: TourFull, siteUrl: string): string {
   const ld: Record<string, unknown> = {
     '@context': 'https://schema.org',
@@ -50,7 +55,24 @@ function tourJsonLd(tour: TourFull, siteUrl: string): string {
     },
   };
   if (tour.coverImage) ld.image = tour.coverImage;
+  if (tour.durationDays) ld.additionalProperty = { '@type': 'PropertyValue', name: 'Длительность', value: `${tour.durationDays} дн.` };
+  const rating = aggregateRatingLd(tour.reviews ?? []);
+  if (rating) {
+    ld.aggregateRating = rating;
+    const reviews = reviewItemsLd(tour.reviews ?? []);
+    if (reviews.length) ld.review = reviews;
+  }
   return JSON.stringify(ld);
+}
+
+/** BreadcrumbList для страницы тура (13.4) */
+function tourBreadcrumbLd(tour: TourFull, siteUrl: string): string {
+  return jsonLdScript(breadcrumbLd(siteUrl, [
+    { name: 'Главная', url: '/' },
+    { name: 'Туры', url: '/tours' },
+    ...(tour.destination ? [{ name: tour.destination.name, url: `/destinations/${tour.destination.slug}` }] : []),
+    { name: tour.title, url: `/tours/${tour.slug}` },
+  ]));
 }
 
 export default async function TourPage({ params }: { params: { slug: string } }) {
@@ -73,11 +95,15 @@ export default async function TourPage({ params }: { params: { slug: string } })
         ) : null}
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" aria-hidden />
         <div className="absolute inset-x-0 bottom-0 mx-auto max-w-7xl px-4 pb-8 sm:px-6">
-          <nav aria-label="breadcrumb" className="mb-2 text-sm text-emerald-100">
-            <Link href="/" className="hover:underline">{ru.common.brand}</Link>{' '}›{' '}
-            <Link href="/tours" className="hover:underline">{ru.nav.tours}</Link>{' '}›{' '}
-            <span aria-current="page">{tour.title}</span>
-          </nav>
+          <Breadcrumbs
+            className="mb-2 text-emerald-100 [&_a]:hover:text-white"
+            items={[
+              { name: ru.common.brand, href: '/' },
+              { name: ru.nav.tours, href: '/tours' },
+              ...(tour.destination ? [{ name: tour.destination.name, href: `/destinations/${tour.destination.slug}` }] : []),
+              { name: tour.title },
+            ]}
+          />
           <h1 className="font-serif text-3xl font-bold text-white sm:text-4xl">{tour.title}</h1>
           <p className="mt-1 text-emerald-100">
             {tour.destination ? (
@@ -225,6 +251,7 @@ export default async function TourPage({ params }: { params: { slug: string } })
       </div>
 
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: tourJsonLd(tour, siteUrl) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: tourBreadcrumbLd(tour, siteUrl) }} />
     </article>
   );
 }

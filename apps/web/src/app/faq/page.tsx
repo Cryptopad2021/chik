@@ -1,6 +1,11 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { ru } from '@/content/ru';
 import { apiGet, type FaqInfo } from '../../lib/api';
+import { Breadcrumbs } from '../../components/Breadcrumbs';
+import { faqLd, breadcrumbLd, jsonLdScript } from '../../lib/seo';
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
 
 export const revalidate = 300;
 
@@ -26,7 +31,8 @@ export default async function FaqPage() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
-      <h1 className="font-serif text-3xl font-bold text-emerald-950 sm:text-4xl">{ru.faq.title}</h1>
+      <Breadcrumbs items={[{ name: 'Главная', href: '/' }, { name: ru.faq.title }]} />
+      <h1 className="mt-2 font-serif text-3xl font-bold text-emerald-950 sm:text-4xl">{ru.faq.title}</h1>
 
       {items.length === 0 ? (
         <p className="mt-8 rounded-2xl border border-dashed border-stone-300 bg-stone-50 p-8 text-center text-stone-600">
@@ -50,23 +56,19 @@ export default async function FaqPage() {
         </div>
       )}
 
-      {/* JSON-LD FAQPage — только реальные данные со страницы (ТЗ §30: не генерировать ложные SEO-данные) */}
+      {/* JSON-LD FAQPage + BreadcrumbList — только реальные данные со страницы (ТЗ §30, 13.3) */}
       {items.length > 0 ? (
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              '@context': 'https://schema.org',
-              '@type': 'FAQPage',
-              mainEntity: items.map((f) => ({
-                '@type': 'Question',
-                name: f.question,
-                acceptedAnswer: { '@type': 'Answer', text: f.answer },
-              })),
-            }),
-          }}
+          dangerouslySetInnerHTML={{ __html: jsonLdScript(faqLd(items.map((f) => ({ question: f.question, answer: f.answer })))) }}
         />
       ) : null}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: jsonLdScript(breadcrumbLd(SITE_URL, [{ name: 'Главная', url: '/' }, { name: ru.faq.title, url: '/faq' }])),
+        }}
+      />
     </div>
   );
 }

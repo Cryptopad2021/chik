@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ru } from '@/content/ru';
 import { apiGet, type DestinationInfo } from '../../lib/api';
+import { Breadcrumbs } from '../../components/Breadcrumbs';
 
 interface ListResponse<T> { items: T[]; total: number }
 
@@ -22,7 +23,8 @@ export default async function DestinationsPage() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
-      <h1 className="font-serif text-3xl font-bold text-emerald-950 sm:text-4xl">{ru.destinations.title}</h1>
+      <Breadcrumbs items={[{ name: 'Главная', href: '/' }, { name: ru.destinations.title }]} />
+      <h1 className="mt-2 font-serif text-3xl font-bold text-emerald-950 sm:text-4xl">{ru.destinations.title}</h1>
 
       {items.length === 0 ? (
         <div className="mt-10 rounded-2xl border border-dashed border-stone-300 bg-stone-50 p-10 text-center">

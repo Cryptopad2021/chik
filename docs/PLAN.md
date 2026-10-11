@@ -211,11 +211,11 @@ compose-файл валиден (`docker compose config` — если досту
 
 ## PHASE 13 — SEO
 
-- [ ] 13.1 Metadata per page: title/description/canonical/OG/Twitter (§30) из SiteSettings defaults + per-tour overrides
-- [ ] 13.2 sitemap.xml (динамический), robots.txt
-- [ ] 13.3 JSON-LD: Organization, TouristTrip/Product, BreadcrumbList, FAQPage, AggregateRating (только реальные отзывы!)
-- [ ] 13.4 Breadcrumbs UI + микроразметка; SEO URL §62 (/tours/[slug])
-- [ ] 13.5 Проверка: отсутствие ложных данных; тесты metadata snapshot ✅ → Commit «feat(phase13): seo»
+- [x] 13.1 Metadata per page: title/description/canonical/OG/Twitter (§30) из SiteSettings defaults + per-tour overrides
+- [x] 13.2 sitemap.xml (динамический), robots.txt
+- [x] 13.3 JSON-LD: Organization (layout, из SiteSettings), Product+AggregateRating+Review (тур, только реальные отзывы), BreadcrumbList (тур/направление/faq/reviews), FAQPage (faq) — lib/seo.ts
+- [x] 13.4 Breadcrumbs UI (components/Breadcrumbs.tsx) + микроразметка на tours/[slug], destinations/[slug], tours, destinations, faq, reviews; SEO URL §62 (/tours/[slug])
+- [x] 13.5 Проверка: aggregateRatingLd возвращает null при отсутствии отзывов (без ложных данных); unit-тесты seo.spec.ts (8) ✅ → Commit «feat(phase13): seo»
 
 ---
 

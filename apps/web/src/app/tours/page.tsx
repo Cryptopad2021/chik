@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { ru } from '@/content/ru';
 import { apiGet, type TourSummary, type DestinationInfo } from '../../lib/api';
 import { TourCard } from '../../components/TourCard';
+import { Breadcrumbs } from '../../components/Breadcrumbs';
 
 interface ListResponse<T> { items: T[]; total: number }
 
@@ -56,7 +57,8 @@ export default async function ToursPage({
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
-      <h1 className="font-serif text-3xl font-bold text-emerald-950 sm:text-4xl">{ru.catalog.title}</h1>
+      <Breadcrumbs items={[{ name: 'Главная', href: '/' }, { name: ru.catalog.title }]} />
+      <h1 className="mt-2 font-serif text-3xl font-bold text-emerald-950 sm:text-4xl">{ru.catalog.title}</h1>
 
       {/* Фильтры — GET-форма → shareable URL (ТЗ §29) */}
       <form method="get" action="/tours" className="mt-6 grid grid-cols-2 gap-3 rounded-2xl border border-stone-200 bg-white p-4 shadow-sm sm:grid-cols-3 lg:grid-cols-6">
