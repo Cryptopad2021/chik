@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ANALYTICS_EVENT_TYPES, findPiiKeys } from './analytics.constants';
 import { TrackEventDto } from './dto';
+import { cached } from '../../common/cache';
 
 /**
  * Сбор и агрегация событий аналитики (ТЗ §71–73).
@@ -71,6 +72,10 @@ export class AnalyticsService {
 
   /** Воронка: view_tour → select_departure → start_booking → booking_created → booking_confirmed. */
   async funnel(days: number) {
+    return cached(`an:funnel:${days}`, 60_000, () => this.funnelUncached(days));
+  }
+
+  private async funnelUncached(days: number) {
     const since = new Date(Date.now() - days * 86400_000);
     const types = ['view_tour', 'select_departure', 'start_booking', 'booking_created', 'booking_confirmed'];
     const grouped = await this.db.analyticsEvent.groupBy({
@@ -91,6 +96,10 @@ export class AnalyticsService {
 
   /** События по дням (для графиков). */
   async eventsByDay(days: number, type?: string) {
+    return cached(`an:byday:${days}:${type ?? 'all'}`, 60_000, () => this.eventsByDayUncached(days, type));
+  }
+
+  private async eventsByDayUncached(days: number, type?: string) {
     const since = new Date(Date.now() - days * 86400_000);
     const rows = await this.db.$queryRaw<Array<{ day: Date; type: string; count: bigint }>>`
       SELECT date_trunc('day', "createdAt") AS day, type, COUNT(*)::bigint AS count
@@ -102,6 +111,10 @@ export class AnalyticsService {
 
   /** Топ туров по просмотрам/выбору дат. */
   async topTours(days: number, limit = 10) {
+    return cached(`an:top:${days}:${limit}`, 60_000, () => this.topToursUncached(days, limit));
+  }
+
+  private async topToursUncached(days: number, limit = 10) {
     const since = new Date(Date.now() - days * 86400_000);
     const rows = await this.db.$queryRaw<Array<{ tourId: string; views: bigint; selects: bigint; created: bigint }>>`
       SELECT "tourId",
@@ -125,6 +138,10 @@ export class AnalyticsService {
 
   /** UTM-разрез: заявки с рекламных меток. */
   async utmBreakdown(days: number) {
+    return cached(`an:utm:${days}`, 60_000, () => this.utmBreakdownUncached(days));
+  }
+
+  private async utmBreakdownUncached(days: number) {
     const since = new Date(Date.now() - days * 86400_000);
     const grouped = await this.db.analyticsEvent.groupBy({
       by: ['utmSource', 'utmMedium', 'utmCampaign'],
@@ -143,6 +160,10 @@ export class AnalyticsService {
 
   /** Telegram-активность: клики по кнопкам публикаций + события TG_BOT. */
   async telegramStats(days: number) {
+    return cached(`an:tg:${days}`, 60_000, () => this.telegramStatsUncached(days));
+  }
+
+  private async telegramStatsUncached(days: number) {
     const since = new Date(Date.now() - days * 86400_000);
     const [clicks, posts] = await Promise.all([
       this.db.analyticsEvent.count({ where: { createdAt: { gte: since }, type: 'telegram_click' } }),

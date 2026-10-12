@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import Link from 'next/link';
 import type { TourSummary } from '../lib/api';
 import { formatPrice, formatDate } from '../lib/format';
@@ -10,8 +11,13 @@ export function TourCard({ tour }: { tour: TourSummary }) {
       <Link href={`/tours/${tour.slug}`} className="block focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-700" aria-label={tour.title}>
         <div className="relative h-48 w-full overflow-hidden bg-gradient-to-br from-emerald-100 to-stone-200">
           {cover ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={cover} alt={tour.title} loading="lazy" className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.02]" />
+            <Image
+              src={cover}
+              alt={tour.title}
+              fill
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+              className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.02]"
+            />
           ) : (
             <div className="flex h-full items-center justify-center text-4xl" aria-hidden>⛰</div>
           )}

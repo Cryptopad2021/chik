@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { BookingStatus, DepartureStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AppException } from '../../common/app-exception';
+import { cached } from '../../common/cache';
 
 /**
  * Дашборд админ-панели (ТЗ §19) + Customer CRM (§23).
@@ -18,6 +19,11 @@ export class AdminStatsService {
 
   /** Метрики за последние `days` дней (для графиков и «выручка/туристы»). */
   async dashboard(days = 30) {
+    // Query-level кэш 15 с (фаза 15.2): дашборд — тяжёлая агрегация, свежесть ±15 с достаточна.
+    return cached(`dash:${days}`, 15_000, () => this.dashboardUncached(days));
+  }
+
+  private async dashboardUncached(days = 30) {
     const since = new Date(Date.now() - days * 86400_000);
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);

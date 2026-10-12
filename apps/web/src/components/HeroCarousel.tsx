@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ru } from '@/content/ru';
@@ -90,8 +91,14 @@ export function HeroCarousel({ slides }: { slides: HeroSlideData[] }) {
                 aria-label={`${i + 1} / ${count}: ${s.title}`}
               >
                 {s.imageUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={s.imageUrl} alt={s.title} className="absolute inset-0 h-full w-full object-cover" />
+                  <Image
+                    src={s.imageUrl}
+                    alt={s.title}
+                    fill
+                    priority={i === 0}
+                    sizes="100vw"
+                    className="absolute inset-0 h-full w-full object-cover"
+                  />
                 ) : (
                   <div className="absolute inset-0 bg-gradient-to-br from-emerald-950 via-emerald-900 to-stone-800" aria-hidden />
                 )}

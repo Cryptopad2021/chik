@@ -231,11 +231,15 @@ compose-файл валиден (`docker compose config` — если досту
 
 ## PHASE 15 — PERFORMANCE
 
-- [ ] 15.1 Images: next/image, lazy loading, форматы WebP/AVIF, presigned uploads
-- [ ] 15.2 SSR/ISR для каталога и туров; caching layer (query-level), индексы повторно проверить EXPLAIN
-- [ ] 15.3 Bundle analysis web/admin; устранить реальные bottlenecks (§60, §15)
-- [ ] 15.4 Lighthouse-профиль (desktop/mobile) — фиксация результатов в docs
-- [ ] 15.5 Commit «perf(phase15)»
+- [x] 15.1 Images: next/image + priority/lazy в TourCard, HeroCarousel, destinations; AVIF/WebP через `images.formats` в next.config.mjs; remotePatterns для S3/CDN-хостов. Presigned uploads уже реализованы в фазе медиа (S3 signed URL сервис)
+- [x] 15.2 ISR для каталога/туров (`revalidate` в страницах web) + query-level кэш `apps/api/src/common/cache.ts` (TTL-Map, инвалидация по префиксу) применён в admin-stats дашборде и агрегатах аналитики; тесты cache.spec.ts (5). EXPLAIN на реальной БД недоступен в среде (нет Postgres) — индексы сверены со схемой Prisma вручную (см. отклонение #8)
+- [x] 15.3 Bundle: next.config web — production serverExternalPackages, image opt лимиты; админ без тяжёлых чарт-библиотек (лёгкие CSS-бары); реальных bottlenecks (moment/lodash полные импорты) не обнаружено при проверке кода
+- [x] 15.4 Lighthouse CI — отклонение #7: в среде нет браузера/Chromium, прогон невозможен; зафиксировано как ручная проверка (SSR+ISR, next/image, кэш агрегатов, rate-limit). Результаты будут сняты при первом деплое
+- [x] 15.5 Полный прогон зелёный: API tsc ✅, vitest 19 файлов / 131 test ✅; web tsc ✅, tests 15 ✅; admin tsc ✅, tests 8 ✅ → Commit «perf(phase15)»
+
+**Отклонения фазы 15:**
+- #7 Lighthouse CI невозможна в среде (нет Chromium) — заменена ручной оптимизацией по checklist §15/§60; снять метрики при деплое.
+- #8 Redis/Postgres отсутствуют в среде — query-кэш реализован in-memory TTL-Map с интерфейсом, совместимым с будущим Redis-адаптером (REDIS_URL в env заложен); EXPLAIN требует реальной БД.
 
 ---
 

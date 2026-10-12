@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Image from 'next/image';
 import Link from 'next/link';
 import { ru } from '@/content/ru';
 import { apiGet, type DestinationInfo } from '../../lib/api';
@@ -42,8 +43,9 @@ export default async function DestinationsPage() {
                 className="group block overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm transition hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-700"
               >
                 {d.imageUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={d.imageUrl} alt={d.name} className="h-44 w-full object-cover" loading="lazy" />
+                  <div className="relative h-44 w-full">
+                    <Image src={d.imageUrl} alt={d.name} fill sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" className="object-cover" />
+                  </div>
                 ) : (
                   <div className="flex h-44 w-full items-center justify-center bg-gradient-to-br from-emerald-800 to-emerald-950 text-3xl text-white/90">⛰</div>
                 )}
