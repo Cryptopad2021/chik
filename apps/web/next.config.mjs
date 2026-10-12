@@ -1,6 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // standalone-выход нужен для Docker-образа (фаза 16.1): минимальный runner без node_modules
+  output: 'standalone',
   images: {
     // Хосты медиа из S3/CDN добавляются через env MEDIA_IMAGE_HOSTS (через запятую)
     remotePatterns: [

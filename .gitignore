@@ -20,3 +20,6 @@ coverage/
 # security: never commit tokens
 .git-token
 *.patch
+
+# env templates (whitelist)
+!.env.production.example

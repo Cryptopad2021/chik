@@ -1,0 +1,140 @@
+# ЧиркейТур — production-стек (фаза 16.1, ТЗ §75).
+# Запуск с сервера (VPS):
+#   1) Скопируйте .env.production.example -> .env и заполните РЕАЛЬНЫЕ секреты (не коммитьте!).
+#   2) docker compose -f infrastructure/docker/docker-compose.prod.yml --env-file .env up -d --build
+#   3) Миграции: docker compose -f ...prod.yml exec api npx prisma migrate deploy
+#   4) Первый админ (один раз): docker compose -f ...prod.yml exec api sh -c \
+#        "ADMIN_EMAIL=... ADMIN_PASSWORD=... npx ts-node /app/prisma-bootstrap.ts" (см. DEPLOYMENT.md)
+# SEED_DEMO намеренно отсутствует в этом стеке — демо-данные в prod не сеются (ТЗ §50).
+name: chirkey-prod
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: chirkey-pg
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-chirkey}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-chirkey_tour}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-chirkey} -d ${POSTGRES_DB:-chirkey_tour}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [chirkey]
+
+  redis:
+    image: redis:7-alpine
+    container_name: chirkey-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks: [chirkey]
+
+  api:
+    build:
+      context: ../..
+      dockerfile: apps/api/Dockerfile
+    image: chirkey/api:latest
+    container_name: chirkey-api
+    restart: unless-stopped
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-chirkey}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-chirkey_tour}
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?set JWT_REFRESH_SECRET}
+      CORS_ORIGINS: ${CORS_ORIGINS:?set CORS_ORIGINS}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHANNEL_ID: ${TELEGRAM_CHANNEL_ID:-}
+      TELEGRAM_WEBHOOK_SECRET: ${TELEGRAM_WEBHOOK_SECRET:-}
+      TELEGRAM_WEBHOOK_ENABLED: ${TELEGRAM_WEBHOOK_ENABLED:-false}
+      API_PUBLIC_URL: ${API_PUBLIC_URL:-}
+      TELEGRAM_NOTIFICATIONS_ENABLED: ${TELEGRAM_NOTIFICATIONS_ENABLED:-false}
+      EMAIL_HOST: ${EMAIL_HOST:-}
+      EMAIL_PORT: ${EMAIL_PORT:-587}
+      EMAIL_USER: ${EMAIL_USER:-}
+      EMAIL_PASSWORD: ${EMAIL_PASSWORD:-}
+      EMAIL_FROM: ${EMAIL_FROM:-no-reply@chirkey.tour}
+      SCHEDULER_ENABLED: ${SCHEDULER_ENABLED:-true}
+      STORAGE_DRIVER: ${STORAGE_DRIVER:-local}
+      MEDIA_ROOT: /data/media
+      MEDIA_PUBLIC_URL: ${MEDIA_PUBLIC_URL:?set MEDIA_PUBLIC_URL}
+      S3_ENDPOINT: ${S3_ENDPOINT:-}
+      S3_BUCKET: ${S3_BUCKET:-}
+      S3_REGION: ${S3_REGION:-us-east-1}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-}
+    volumes:
+      - media:/data/media
+    ports:
+      - "${API_BIND:-127.0.0.1}:3001:3001"
+    networks: [chirkey]
+
+  web:
+    build:
+      context: ../..
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?set NEXT_PUBLIC_API_URL}
+        NEXT_PUBLIC_WEB_URL: ${NEXT_PUBLIC_WEB_URL:?set NEXT_PUBLIC_WEB_URL}
+    image: chirkey/web:latest
+    container_name: chirkey-web
+    restart: unless-stopped
+    depends_on:
+      api: { condition: service_started }
+    ports:
+      - "${WEB_BIND:-127.0.0.1}:3000:3000"
+    networks: [chirkey]
+
+  admin:
+    build:
+      context: ../..
+      dockerfile: apps/admin/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+    image: chirkey/admin:latest
+    container_name: chirkey-admin
+    restart: unless-stopped
+    depends_on:
+      api: { condition: service_started }
+    ports:
+      - "${ADMIN_BIND:-127.0.0.1}:3002:3002"
+    networks: [chirkey]
+
+  # Reverse-proxy (Caddy: авто-HTTPS Let's Encrypt). Альтернатива — nginx в вашем окружении.
+  caddy:
+    image: caddy:2-alpine
+    container_name: chirkey-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks: [chirkey]
+
+volumes:
+  pgdata:
+  redisdata:
+  media:
+  caddy_data:
+  caddy_config:
+
+networks:
+  chirkey:
+    driver: bridge

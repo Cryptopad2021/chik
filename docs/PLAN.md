@@ -245,11 +245,36 @@ compose-файл валиден (`docker compose config` — если досту
 
 ## PHASE 16 — PRODUCTION
 
-- [ ] 16.1 Production Dockerfiles (multi-stage) для api/web/admin + compose prod override; healthchecks
-- [ ] 16.2 `.env.production.example` (без секретов) + secrets policy
-- [ ] 16.3 `/docs/DEPLOYMENT.md`: сборка, миграции (`prisma migrate deploy`), seed-off в prod, backup strategy (pg_dump cron + WAL/S3), rollback, Telegram webhook setup, legacy bot shutdown procedure
-- [ ] 16.4 Logging/aggregation guidance + monitoring notes
-- [ ] 16.5 Финальный чек определения готовности (§75) по всем функциям → Commit «chore(phase16): production readiness»
+- [x] 16.1 Production Dockerfiles (multi-stage) для api/web/admin + compose prod override; healthchecks
+- [x] 16.2 `.env.production.example` (без секретов) + secrets policy
+- [x] 16.3 `/docs/DEPLOYMENT.md`: сборка, миграции (`prisma migrate deploy`), seed-off в prod, backup strategy (pg_dump cron + WAL/S3), rollback, Telegram webhook setup, legacy bot shutdown procedure
+- [x] 16.4 Logging/aggregation guidance + monitoring notes
+- [x] 16.5 Финальный чек определения готовности (§75) по всем функциям → Commit «chore(phase16): production readiness»
+
+**Отклонения фазы 16:**
+- #9 Сборка Docker-образов не проверялась в среде (Docker daemon недоступен) — Dockerfiles написаны по стандартным multi-stage шаблонам; первый `docker build` на сервере — часть процедуры деплоя (DEPLOYMENT.md §3).
+- web/admin переведены на `output: 'standalone'` — минимальный runner без node_modules.
+
+---
+
+## ФИНАЛЬНАЯ ПРИЁМКА (чек готовности, ТЗ §75)
+
+| Область | Статус | Где проверено |
+|---------|--------|---------------|
+| Модели/миграции (туры, выезды, брони, отзывы, TG-посты, аналитика, медиа) | ✅ | prisma/schema.prisma + 10+ миграций, все up-apply |
+| API: туры/выезды/бронирования/отзывы/CRM/auth/settings/analytics/notifications/telegram | ✅ | NestJS modules, 139 unit/e2e тестов API зелёные |
+| Публичный сайт (главная, каталог, тур, бронирование, отзывы, SEO/JSON-LD) | ✅ | apps/web, typecheck+build OK, ISR + next/image (фаза 15) |
+| Админка (CRAM-разделы, публикация TG, уведомления, аналитика, настройки) | ✅ | apps/admin, READY_HREFS по всем разделам |
+| Telegram-бот: booking flow, публикации в канал, ingest, webhook+secret | ✅ | фаза 10/15, 27+ тестов telegram |
+| Уведомления email/TG + cron (напоминания за 24ч) | ✅ | фаза 11, dry-run без credentials (§55) |
+| Аналитика событий + воронка + админ-дашборд | ✅ | фаза 12, без ПДн в событиях (§72) |
+| Безопасность: JWT jti-ротация, helmet, rate-limit, whitelist DTO, секреты только env | ✅ | фаза 14, аудит в PLAN |
+| Производительность: индексы, кэш TTL, images оптимизация | ✅ | фаза 15 (Lighthouse CI — отклонение #7) |
+| Деплой: Dockerfiles, compose.prod, Caddy HTTPS, миграции, бэкапы, rollback | ✅ код | фаза 16 (сборка образов — отклонение #9) |
+| Документация: ARCHITECTURE, LOCAL_SETUP, DEPLOYMENT, реестр отклонений | ✅ | docs/ |
+
+Ограничения среды (не блокируют приёмку, проверить при первом деплое):
+реальный docker-build (#9), Playwright UI (#5), параллельный overselling-test на живой БД (#6), Lighthouse (#7), Redis-адаптер кэша (#8).
 
 ---
 
