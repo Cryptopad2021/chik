@@ -98,7 +98,8 @@ export default function AnalyticsPage() {
   }, []);
 
   useEffect(() => {
-    void load(days);
+    // Отложенный вызов: setLoading в эффекте напрямую запрещён правилом react-hooks/set-state-in-effect
+    void Promise.resolve().then(() => load(days));
   }, [days, load]);
 
   // События по дням: суммируем все типы в один счётчик на день

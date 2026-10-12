@@ -1,6 +1,8 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
+import { APP_GUARD } from "@nestjs/core";
 import { ScheduleModule } from "@nestjs/schedule";
+import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 import { PrismaModule } from "./prisma/prisma.module";
 import { AuditModule } from "./modules/audit/audit.module";
 import { AuthModule } from "./modules/auth/auth.module";
@@ -28,6 +30,14 @@ import { HealthController } from "./modules/health/health.controller";
       envFilePath: [".env", "../../.env"],
     }),
     ScheduleModule.forRoot(),
+    // Rate limiting (§54): глобальный лимит 100 запросов/мин на IP.
+    ThrottlerModule.forRoot([
+      {
+        name: "default",
+        ttl: 60_000,
+        limit: Number(process.env.THROTTLE_DEFAULT_LIMIT ?? 100),
+      },
+    ]),
     PrismaModule,
     AuditModule,
     AuthModule,
@@ -48,5 +58,9 @@ import { HealthController } from "./modules/health/health.controller";
     AnalyticsModule,
   ],
   controllers: [HealthController],
+  providers: [
+    // Глобальный guard: все эндпоинты под rate limit (§54); точечные лимиты — через @Throttle на контроллерах.
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+  ],
 })
 export class AppModule {}

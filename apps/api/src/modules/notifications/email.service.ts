@@ -69,7 +69,7 @@ export class EmailService {
     if (this.smtpUrl) {
       try {
         // Ленивая зависимость: nodemailer ставится только на боевых стендах.
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
         const nodemailer = require('nodemailer');
         const transporter = nodemailer.createTransport(this.smtpUrl);
         await transporter.sendMail({

@@ -20,6 +20,7 @@ import {
   AuthUser,
 } from "../../common/decorators/current-user.decorator";
 import { AuditService } from "../audit/audit.service";
+import { sanitizeText } from "../../common/text-sanitizer";
 
 @ApiTags("bookings")
 @Controller("api/bookings")
@@ -35,6 +36,11 @@ export class BookingsController {
       "Создать заявку (публичный; атомарное списание мест, защита от overselling)",
   })
   async create(@Body() dto: CreateBookingDto) {
+    // XSS defence-in-depth (§39/14.4): свободный текст sanitized до записи в БД
+    if (dto.comment) dto.comment = sanitizeText(dto.comment);
+    for (const p of dto.passengers ?? []) {
+      if (p.comment) p.comment = sanitizeText(p.comment);
+    }
     const { booking, replayed } = await this.bookings.create(dto);
     return {
       success: true,

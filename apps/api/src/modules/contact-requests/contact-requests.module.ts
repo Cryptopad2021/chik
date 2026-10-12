@@ -7,6 +7,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { RequirePermissions } from '../../common/decorators/permissions.decorator';
 import { PERMISSIONS } from '../../common/constants';
+import { sanitizeText } from '../../common/text-sanitizer';
 
 const contactSchema = z.object({
   name: z.string().min(1).max(100),
@@ -21,6 +22,9 @@ export class ContactRequestsService {
   constructor(private readonly prisma: PrismaService) {}
   create(body: unknown) {
     const data = contactSchema.parse(body);
+    // XSS defence-in-depth (§39/14.4)
+    data.name = sanitizeText(data.name);
+    if (data.message) data.message = sanitizeText(data.message);
     if (!this.prisma.isHealthy()) throw new Error('db');
     return this.prisma.contactRequest.create({ data });
   }
