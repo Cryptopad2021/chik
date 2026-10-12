@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { AnalyticsModule } from '../analytics/analytics.module';
 import { AuthModule } from '../auth/auth.module';
 import { TelegramService } from './telegram.service';
 import { TelegramBotService } from './telegram-bot.service';
@@ -10,7 +11,7 @@ import { TelegramController } from './telegram.controller';
  * публикации в канал (§33–34), webhook (§47). Audit/Notifications — глобальные модули.
  */
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, AnalyticsModule],
   controllers: [TelegramController],
   providers: [TelegramService, TelegramBotService, TelegramPublicationService],
   exports: [TelegramService, TelegramPublicationService],
