@@ -206,10 +206,18 @@ async function main() {
   const adminEmail = process.env.ADMIN_EMAIL;
   const adminPassword = process.env.ADMIN_PASSWORD;
   if (adminEmail && adminPassword) {
-    const exists = await prisma.user.findUnique({ where: { email: adminEmail } });
-    if (!exists) {
+    const exists = await prisma.user.findUnique({ where: { email: adminEmail.toLowerCase() } });
+    if (exists) {
+      // Пароль в .env мог измениться после первого сида — обновляем хеш,
+      // иначе логин будет выдавать «Неверный email или пароль».
+      await prisma.user.update({
+        where: { id: exists.id },
+        data: { passwordHash: await hash(adminPassword), isActive: true, deletedAt: null },
+      });
+      console.log(`Updated admin user ${adminEmail} (password synced with .env)`);
+    } else {
       await prisma.user.create({
-        data: { email: adminEmail, passwordHash: await hash(adminPassword), role: UserRole.SUPER_ADMIN, firstName: 'Администратор', lastName: 'ЧиркейТур' },
+        data: { email: adminEmail.toLowerCase(), passwordHash: await hash(adminPassword), role: UserRole.SUPER_ADMIN, firstName: 'Администратор', lastName: 'ЧиркейТур' },
       });
       console.log(`Created admin user ${adminEmail}`);
     }
