@@ -53,7 +53,7 @@ export class BookingsService {
         // 1. Блокируем строку выезда (FOR UPDATE) — параллельная транзакция ждёт этой блокировки.
         const rows = await tx.$queryRaw<Array<{ id: string; total_seats: number; booked_seats: number; status: string; tour_id: string }>>`
           SELECT id, "totalSeats" AS total_seats, "bookedSeats" AS booked_seats, status, "tourId" AS tour_id
-          FROM "Departure" WHERE id = ${dto.departureId}::uuid FOR UPDATE`;
+          FROM "Departure" WHERE id = ${dto.departureId} FOR UPDATE`;
         const dep = rows[0];
         if (!dep) throw new AppException('DEPARTURE_NOT_FOUND', 'Выезд не найден', 404);
         if (dep.status === 'CANCELLED' || dep.status === 'COMPLETED' || dep.status === 'FULL') {
@@ -65,7 +65,7 @@ export class BookingsService {
         // 2. Атомарное списание мест с повторной проверкой доступности в условии UPDATE.
         const updated = await tx.$executeRaw`
           UPDATE "Departure" SET "bookedSeats" = "bookedSeats" + ${seatsNeeded}
-          WHERE id = ${dto.departureId}::uuid AND "totalSeats" - "bookedSeats" >= ${seatsNeeded}`;
+          WHERE id = ${dto.departureId} AND "totalSeats" - "bookedSeats" >= ${seatsNeeded}`;
         if (updated !== 1) throw AppException.seatsInsufficient(available, seatsNeeded);
 
         // 3. Customer upsert по телефону (CRM, ТЗ §23).
@@ -276,7 +276,7 @@ export class BookingsService {
         await tx.$executeRaw`
           UPDATE "Departure" SET "bookedSeats" = GREATEST("bookedSeats" - ${seats}, 0),
             status = CASE WHEN status = 'FULL' THEN 'OPEN' ELSE status END
-          WHERE id = ${booking.departureId}::uuid`;
+          WHERE id = ${booking.departureId}`;
       }
       return updated;
     });

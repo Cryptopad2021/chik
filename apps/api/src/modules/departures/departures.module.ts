@@ -232,7 +232,7 @@ export class DeparturesService {
         }
         // Освобождаем места на выезде до удаления строки (чтобы UPDATE не упал на отсутствующей записи)
         if (active.length) {
-          await tx.$executeRaw`UPDATE "Departure" SET "bookedSeats" = 0 WHERE id = ${id}::uuid`;
+          await tx.$executeRaw`UPDATE "Departure" SET "bookedSeats" = 0 WHERE id = ${id}`;
         }
       });
     }

@@ -34,7 +34,7 @@ export class DeparturesCapacityService {
       async (tx) => {
         const rows = await tx.$queryRaw<Array<{ id: string; total_seats: number; status: string }>>`
           SELECT id, "totalSeats" AS total_seats, status
-          FROM "Departure" WHERE id = ${departureId}::uuid FOR UPDATE`;
+          FROM "Departure" WHERE id = ${departureId} FOR UPDATE`;
         const dep = rows[0];
         if (!dep) throw new AppException('DEPARTURE_NOT_FOUND', 'Выезд не найден', 404);
 

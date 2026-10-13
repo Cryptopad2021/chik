@@ -54,7 +54,7 @@ export async function bookingsCreateViaCore(
       // 2. Блокировка строки выезда — параллельные заявки (сайт+бот) сериализуются (§54).
       const rows = await tx.$queryRaw<Array<{ id: string; total_seats: number; booked_seats: number; status: string; tour_id: string }>>`
         SELECT id, "totalSeats" AS total_seats, "bookedSeats" AS booked_seats, status, "tourId" AS tour_id
-        FROM "Departure" WHERE id = ${p.departureId}::uuid FOR UPDATE`;
+        FROM "Departure" WHERE id = ${p.departureId} FOR UPDATE`;
       const dep = rows[0];
       if (!dep) throw new Error('DEPARTURE_NOT_FOUND');
       if (dep.status === 'CANCELLED' || dep.status === 'COMPLETED' || dep.status === 'FULL') {
@@ -65,7 +65,7 @@ export async function bookingsCreateViaCore(
 
       const updated = await tx.$executeRaw`
         UPDATE "Departure" SET "bookedSeats" = "bookedSeats" + ${seatsNeeded}
-        WHERE id = ${p.departureId}::uuid AND "totalSeats" - "bookedSeats" >= ${seatsNeeded}`;
+        WHERE id = ${p.departureId} AND "totalSeats" - "bookedSeats" >= ${seatsNeeded}`;
       if (updated !== 1) throw new Error('SEATS_INSUFFICIENT');
 
       // 3. Customer upsert по телефону / telegramUserId (CRM, §23).
