@@ -63,6 +63,17 @@ npm run seed                # демо-данные (помечены как dem
 Без Docker: создайте БД `chirkey` в локальном PostgreSQL и укажите
 `DATABASE_URL=postgresql://user:pass@localhost:5432/chirkey` в .env.
 
+> ⚠️ Если при работе сайта API пишет ошибку вида
+> `The column 'Destination.heroSlideImageUrl' does not exist in the current database` —
+> значит ваша база была создана из СТАРОЙ схемы (до добавления новых колонок), и
+> `migrate deploy` ничего не делает, т.к. все миграции уже «применены».
+> Самый простой способ для локальной разработки с демо-данными — пересоздать базу
+> с нуля (ВНИМАНИЕ: все данные будут удалены):
+> ```powershell
+> npx prisma migrate reset --force   # удалит таблицы и применит миграции заново
+> npm run seed                       # затем обязательно пересейте демо-данные
+> ```
+
 ## 4. Запуск приложений
 ```bash
 npm run dev            # turbo: api :3001, web :3000, admin :3002
