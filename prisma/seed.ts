@@ -203,8 +203,10 @@ async function main() {
   }
 
   // 9) Администратор — ТОЛЬКО из env, без захардкоженного пароля (§76)
-  const adminEmail = process.env.ADMIN_EMAIL;
-  const adminPassword = process.env.ADMIN_PASSWORD;
+  // .trim() обязателен: PowerShell Out-File добавляет BOM к первой строке файла,
+  // а CRLF оставляет \r в конце значений — без trim хеш не совпадает и вход падает.
+  const adminEmail = process.env.ADMIN_EMAIL?.trim();
+  const adminPassword = process.env.ADMIN_PASSWORD?.trim();
   if (adminEmail && adminPassword) {
     const exists = await prisma.user.findUnique({ where: { email: adminEmail.toLowerCase() } });
     if (exists) {
