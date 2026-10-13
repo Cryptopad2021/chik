@@ -3,7 +3,9 @@
  * Server-side fetch с коротким ISR-кэшем; при недоступности API — null → empty state (ТЗ §67),
  * никаких фиктивных данных (ТЗ §76).
  */
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3100';
+// NEXT_PUBLIC_API_URL может быть указан как с суффиксом /api, так и без него — нормализуем
+const RAW_API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+const API_URL = RAW_API_URL.replace(/\/api\/?$/, '').replace(/\/$/, '');
 
 export async function apiGet<T>(path: string, revalidate = 30): Promise<T | null> {
   try {

@@ -13,8 +13,12 @@
 
 import type { Role } from './permissions';
 
-export const API_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+// нормализуем: значение может быть указано как с /api, так и без него (код сам добавляет /api/...)
+export const API_URL = (
+  process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
+)
+  .replace(/\/api\/?$/, '')
+  .replace(/\/$/, '');
 
 export interface SessionUser {
   id: string;

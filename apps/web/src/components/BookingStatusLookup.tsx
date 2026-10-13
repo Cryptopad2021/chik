@@ -20,7 +20,8 @@ export function BookingStatusLookup({ initialNumber }: { initialNumber?: string 
     setUi('loading');
     // next-action не нужен: клиентский fetch к публичному эндпоинту by-number
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3100';
+      const RAW = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+      const API_URL = RAW.replace(/\/api\/?$/, '').replace(/\/$/, '');
       const res = await fetch(`${API_URL}/api/bookings/by-number/${encodeURIComponent(q)}`, { headers: { accept: 'application/json' } });
       if (res.status === 404) { setUi('notfound'); return; }
       if (!res.ok) { setUi('error'); return; }
