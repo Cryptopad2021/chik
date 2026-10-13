@@ -6,6 +6,8 @@
  *
  * Запуск: npm run seed  (требует доступный PostgreSQL)
  */
+import { config as loadEnv } from 'dotenv';
+loadEnv(); // подхватываем DATABASE_URL из корневого .env (prisma CLI делает это сам, tsx — нет)
 import { PrismaClient, BookingStatus, TourStatus, UserRole } from '@prisma/client';
 import { hash } from 'argon2';
 import { slugify } from '../apps/api/src/common/slug';
@@ -155,7 +157,8 @@ async function main() {
         },
       },
     });
-    await prisma.$executeRaw`UPDATE "Departure" SET "bookedSeats" = "bookedSeats" + 2 WHERE id = ${departure.id}::uuid`;
+    // id в схеме — TEXT (uuid-строка), поэтому кастим параметр к text, а не ::uuid
+    await prisma.$executeRaw`UPDATE "Departure" SET "bookedSeats" = "bookedSeats" + 2 WHERE id = ${departure.id}::text`;
   }
 
   // 6) Отзывы (помечены demo!) (§24, §76 — никаких фальшивых отзывов под видом реальных)

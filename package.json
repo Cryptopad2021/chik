@@ -15,13 +15,14 @@
     "dev": "turbo run dev --parallel",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
-    "seed": "ts-node prisma/seed.ts"
+    "seed": "tsx prisma/seed.ts"
   },
   "devDependencies": {
     "eslint": "^9.39.5",
     "eslint-config-next": "^15.5.27",
     "prettier": "^3.3.3",
     "prisma": "^5.22.0",
+    "tsx": "^4.23.15",
     "turbo": "^2.3.3"
   },
   "packageManager": "npm@10.8.2",
@@ -32,6 +33,6 @@
     "@prisma/client": "^5.22.0"
   },
   "prisma": {
-    "seed": "ts-node prisma/seed.ts"
+    "seed": "tsx prisma/seed.ts"
   }
 }

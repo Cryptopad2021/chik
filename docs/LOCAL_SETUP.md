@@ -65,13 +65,14 @@ npm run seed                # демо-данные (помечены как dem
 
 ## 4. Запуск приложений
 ```bash
-npm run dev            # turbo: api :3100, web :3000, admin :3001
+npm run dev            # turbo: api :3001, web :3000, admin :3002
 ```
 Страницы:
 - http://localhost:3000            — публичный сайт
 - http://localhost:3000/tours      — каталог
-- http://localhost:3100/api/docs   — Swagger
-- http://localhost:3100/api/health — состояние API+БД
+- http://localhost:3002/login       — админка (доступ: ADMIN_EMAIL/ADMIN_PASSWORD из .env перед seed)
+- http://localhost:3001/api/docs   — Swagger
+- http://localhost:3001/api/health — состояние API+БД
 
 Demo-администратор (из seed, только для локальной разработки):
 email и пароль указаны в prisma/seed.ts.
