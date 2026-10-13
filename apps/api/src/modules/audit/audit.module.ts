@@ -1,6 +1,7 @@
 import { Controller, Get, Global, Module, Query, UseGuards } from "@nestjs/common";
 import { ApiBearerAuth, ApiOperation, ApiTags } from "@nestjs/swagger";
 import { AuditService } from "./audit.service";
+import { AuthModule } from "../auth/auth.module";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { PermissionsGuard } from "../../common/guards/permissions.guard";
 import { RequirePermissions } from "../../common/decorators/permissions.decorator";
@@ -23,5 +24,5 @@ export class AuditController {
 }
 
 @Global()
-@Module({ providers: [AuditService], controllers: [AuditController], exports: [AuditService] })
+@Module({ imports: [AuthModule], providers: [AuditService], controllers: [AuditController], exports: [AuditService] })
 export class AuditModule {}

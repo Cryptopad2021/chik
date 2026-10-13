@@ -3,11 +3,12 @@ import { NotificationsService } from './notifications.service';
 import { NotificationsController } from './notifications.controller';
 import { NotificationsSchedulerService } from './notifications-scheduler.service';
 import { EmailService } from './email.service';
+import { AuthModule } from '../auth/auth.module';
 import { TelegramModule } from '../telegram/telegram.module';
 
 @Global()
 @Module({
-  imports: [TelegramModule],
+  imports: [AuthModule, TelegramModule],
   providers: [NotificationsService, NotificationsSchedulerService, EmailService],
   controllers: [NotificationsController],
   exports: [NotificationsService, EmailService],
