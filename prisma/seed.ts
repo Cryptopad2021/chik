@@ -10,7 +10,7 @@ import { config as loadEnv } from 'dotenv';
 loadEnv(); // подхватываем DATABASE_URL из корневого .env (prisma CLI делает это сам, tsx — нет)
 import { PrismaClient, BookingStatus, TourStatus, UserRole } from '@prisma/client';
 import { hash } from 'argon2';
-import { slugify } from '../apps/api/src/common/slug';
+import { slugify } from '../apps/api/src/common/slug.ts';
 
 const prisma = new PrismaClient();
 
