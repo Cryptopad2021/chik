@@ -1,25 +1,7 @@
-# Dependencies
 node_modules/
-
-# Build outputs
-dist/
-.turbo/
-.next/
-*.tsbuildinfo
-coverage/
-
-# Env
 .env
-.env.local
-.env.*.local
-
-# Misc
-.DS_Store
 *.log
-
-# security: never commit tokens
-.git-token
-*.patch
-
-# env templates (whitelist)
-!.env.production.example
+.DS_Store
+dist/
+.next/
+.turbo/
