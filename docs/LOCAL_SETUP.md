@@ -130,6 +130,13 @@ npm run seed
 4. Если seed завершился ошибкой (например, недоступна БД), хеш в базе НЕ обновился —
    сначала почините БД (`http://localhost:3001/api/health`), затем повторите seed.
 
+⚠️ Если seed падает с ошибкой `Environment variable not found: DATABASE_URL` при том,
+что `npx prisma migrate deploy` работает нормально — это значит, что сид запускается
+через `tsx`, который НЕ подхватывает `.env` автоматически (в отличие от prisma CLI).
+В свежей версии репозитория это исправлено: `prisma/seed.ts` сам загружает `.env`
+(через dotenv с ручным парсингом как резервным вариантом). Обновитесь (`git pull`)
+и выполните `npm install` (dotenv добавлен в зависимости корня).
+
 ## 5. Проверки
 ```bash
 npm run lint && npm run typecheck && npm run test
