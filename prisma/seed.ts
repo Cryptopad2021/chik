@@ -6,8 +6,28 @@
  *
  * Запуск: npm run seed  (требует доступный PostgreSQL)
  */
-import { config as loadEnv } from 'dotenv';
-loadEnv(); // подхватываем DATABASE_URL из корневого .env (prisma CLI делает это сам, tsx — нет)
+// Подхватываем DATABASE_URL из корневого .env (prisma CLI делает это сам, tsx — нет).
+// dotenv может отсутствовать в node_modules при неполной установке зависимостей,
+// поэтому парсим .env вручную как резервный вариант.
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { config: loadEnv } = require('dotenv');
+  loadEnv();
+} catch {
+  // eslint-disable-next-line no-console
+  console.warn('[seed] dotenv не найден, парсим .env вручную. Выполните: npm install');
+  const fs = require('fs');
+  const path = require('path');
+  const envFile = path.resolve(__dirname, '..', '.env');
+  if (fs.existsSync(envFile)) {
+    for (const line of fs.readFileSync(envFile, 'utf8').split(/\r?\n/)) {
+      const m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/);
+      if (m && process.env[m[1]] === undefined) {
+        process.env[m[1]] = m[2].replace(/^["']|["']$/g, '');
+      }
+    }
+  }
+}
 import { PrismaClient, BookingStatus, TourStatus, UserRole } from '@prisma/client';
 import { hash } from 'argon2';
 import { slugify } from '../apps/api/src/common/slug.ts';
