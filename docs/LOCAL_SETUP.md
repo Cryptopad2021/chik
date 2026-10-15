@@ -101,6 +101,23 @@ npm run dev            # turbo: api :3001, web :3000, admin :3002
 на `slug.ts`. Обновитесь командой `git pull` (если она не подтягивает изменения,
 сравните вывод `git log -1 --format=%ci` с датой последнего коммита на GitHub).
 
+Если обновиться не получается, исправьте два файла вручную (откройте их в любом
+редакторе, например VS Code или `notepad prisma\seed.ts`):
+1. `prisma/seed.ts`, строка 13 — добавьте `.ts` в конец пути импорта:
+   ```ts
+   import { slugify } from '../apps/api/src/common/slug.ts';
+   ```
+2. Корневой `package.json` — в ДВУХ местах замените `ts-node` на `tsx`:
+   ```json
+   "scripts": { "seed": "tsx prisma/seed.ts" },
+   "prisma":  { "seed": "tsx prisma/seed.ts" }
+   ```
+Затем установите tsx и выполните сид:
+```powershell
+npm install -D tsx
+npm run seed
+```
+
 Если вход всё равно не работает, проверьте содержимое `.env`:
 1. В файле `.env` должна быть ровно ОДНА строка `ADMIN_PASSWORD=...` (последняя побеждает).
    Типичная ошибка Windows: команда `Out-File .env -Encoding utf8` ДОПИСЫВАЕТ файл к
