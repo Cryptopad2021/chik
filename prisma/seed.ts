@@ -7,30 +7,44 @@
  * Запуск: npm run seed  (требует доступный PostgreSQL)
  */
 // Подхватываем DATABASE_URL из корневого .env (prisma CLI делает это сам, tsx — нет).
-// dotenv может отсутствовать в node_modules при неполной установке зависимостей,
-// поэтому парсим .env вручную как резервный вариант.
-try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const { config: loadEnv } = require('dotenv');
-  loadEnv();
-} catch {
-  // eslint-disable-next-line no-console
-  console.warn('[seed] dotenv не найден, парсим .env вручную. Выполните: npm install');
-  const fs = require('fs');
-  const path = require('path');
-  const envFile = path.resolve(__dirname, '..', '.env');
-  if (fs.existsSync(envFile)) {
-    for (const line of fs.readFileSync(envFile, 'utf8').split(/\r?\n/)) {
-      const m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/);
-      if (m && process.env[m[1]] === undefined) {
-        process.env[m[1]] = m[2].replace(/^["']|["']$/g, '');
-      }
-    }
-  }
-}
+// Важно: seed может выполняться в ESM-режиме (tsx), где __dirname/require недоступны,
+// поэтому путь к .env вычисляется через import.meta.url с фолбэком на process.cwd().
+import { fileURLToPath } from 'node:url';
+import * as nodeFs from 'node:fs';
+import * as nodePath from 'node:path';
 import { PrismaClient, BookingStatus, TourStatus, UserRole } from '@prisma/client';
 import { hash } from 'argon2';
 import { slugify } from '../apps/api/src/common/slug.ts';
+
+function loadRootEnv(): void {
+  const candidates: string[] = [];
+  try {
+    // ESM: prisma/seed.ts -> корень репозитория
+    candidates.push(nodePath.resolve(nodePath.dirname(fileURLToPath(import.meta.url)), '..', '.env'));
+  } catch {
+    /* CJS-режим — import.meta недоступен */
+  }
+  candidates.push(nodePath.resolve(process.cwd(), '.env')); // текущая директория запуска
+  const envFile = candidates.find((f) => nodeFs.existsSync(f));
+  if (!envFile) return;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-explicit-any
+    const dotenv = require('dotenv' as any) as { config?: (o: { path: string }) => unknown };
+    if (typeof dotenv.config === 'function') {
+      dotenv.config({ path: envFile });
+      return;
+    }
+  } catch {
+    /* dotenv не установлен — парсим .env вручную */
+  }
+  for (const line of nodeFs.readFileSync(envFile, 'utf8').split(/\r?\n/)) {
+    const m = line.match(/^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$/);
+    if (!m) continue;
+    const value = m[2].replace(/^["']|["']$/g, '').replace(/^/, ''); // чистим BOM и кавычки
+    if (process.env[m[1]] === undefined) process.env[m[1]] = value;
+  }
+}
+loadRootEnv();
 
 const prisma = new PrismaClient();
 
