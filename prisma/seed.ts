@@ -27,20 +27,14 @@ function loadRootEnv(): void {
   candidates.push(nodePath.resolve(process.cwd(), '.env')); // текущая директория запуска
   const envFile = candidates.find((f) => nodeFs.existsSync(f));
   if (!envFile) return;
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-explicit-any
-    const dotenv = require('dotenv' as any) as { config?: (o: { path: string }) => unknown };
-    if (typeof dotenv.config === 'function') {
-      dotenv.config({ path: envFile });
-      return;
-    }
-  } catch {
-    /* dotenv не установлен — парсим .env вручную */
-  }
-  for (const line of nodeFs.readFileSync(envFile, 'utf8').split(/\r?\n/)) {
+  // Парсим .env вручную: надёжно работает в любом режиме (ESM/CJS, tsx/ts-node),
+  // корректно обрабатывает BOM и CRLF (файлы, созданные PowerShell Out-File).
+  let content = nodeFs.readFileSync(envFile, 'utf8');
+  if (content.charCodeAt(0) === 0xfeff) content = content.slice(1); // strip BOM
+  for (const line of content.split(/\r?\n/)) {
     const m = line.match(/^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$/);
     if (!m) continue;
-    const value = m[2].replace(/^["']|["']$/g, '').replace(/^/, ''); // чистим BOM и кавычки
+    const value = m[2].replace(/^["']|["']$/g, '');
     if (process.env[m[1]] === undefined) process.env[m[1]] = value;
   }
 }
